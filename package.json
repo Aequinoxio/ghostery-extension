@@ -85,7 +85,7 @@
     "jsonfile": "^4.0.0",
     "license-checker": "^15.0.0",
     "markdown-extract": "^1.0.2",
-    "node-sass": "^4.5.3",
+    "node-sass": "^4.13.1",
     "oboe": "^2.1.3",
     "path": "^0.12.7",
     "read-file": "^0.2.0",
