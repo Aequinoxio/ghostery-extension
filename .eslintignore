@@ -3,6 +3,7 @@
 ## Unit Test Files
 *.test.js
 *.test.jsx
+*.jsx.snap
 
 ## Data Images
 app/data-images/
@@ -12,3 +13,10 @@ app/content-scripts/vendor/
 
 ## Precompiled
 app/templates/
+build/
+cliqz/
+dist/
+docs/
+
+## Node Modules
+node_modules/

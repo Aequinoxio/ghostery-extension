@@ -1,5 +1,5 @@
 /**
- * Ghostery NotificationsContentScript
+ * Ghostery Notifications Content Script
  *
  * This file provides notification alerts for the CMP, update dialogs
  * and import/export functionality
@@ -7,7 +7,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2020 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,7 +17,6 @@
  * @namespace  NotificationsContentScript
  */
 import msgModule from './utils/msg';
-import globals from '../../src/classes/Globals';
 import { log } from '../../src/utils/common';
 import xImage from '../data-images/popup/xImage';
 import logoImage from '../data-images/popup/logoImage';
@@ -26,21 +25,18 @@ import bigLogoImage from '../data-images/popup/bigLogoImage';
 const msg = msgModule('notifications');
 const { sendMessage } = msg;
 const { onMessage } = chrome.runtime;
-const IS_EDGE = (globals.BROWSER_INFO.name === 'edge');
-const GHOSTERY_DOMAIN = globals.DEBUG ? 'ghosterystage' : 'ghostery';
 
 /**
  * Use to call init to initialize functionality
  * @var  {Object} initialized to an object with init method as its property
  */
-const NotificationsContentScript = (function (win, doc) {
+const NotificationsContentScript = (function(win, doc) {
 	const ALERT_ID = 'ALERT_ID_6AEC0607-8CC8-4904-BDEB-00F947E5E3C2';
 	let NOTIFICATION_TRANSLATIONS = {};
 	let CMP_DATA = {};
 	let CSS_INJECTED = false;
-	let LANGUAGE = 'en';
 	let ALERT_SHOWN = false;
-	const createEl = function (type) {
+	const createEl = function(type) {
 		return doc.createElement(type);
 	};
 	/**
@@ -51,7 +47,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @param  	{Object} 	parent 	parent DOM element
 	 * @param 	{...Object} args 	children DOM element(s)
 	 */
-	const appendChild = function (parent, ...args) {
+	const appendChild = function(parent, ...args) {
 		for (let i = 0; i < args.length; i++) {
 			parent.appendChild(args[i]);
 		}
@@ -61,7 +57,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @memberOf NotificationsContentScript
 	 * @package
 	 */
-	const injectCSS = function () {
+	const injectCSS = function() {
 		const style = createEl('style');
 		const imp = ' !important;';
 		const reset = 'padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;';
@@ -132,7 +128,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @memberOf NotificationsContentScript
 	 * @package
 	 */
-	const removeAlert = function () {
+	const removeAlert = function() {
 		const el = doc.getElementById(ALERT_ID);
 		if (el) {
 			el.parentNode.removeChild(el);
@@ -147,7 +143,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {Object}  styled div DOM element
 	 */
-	const createCloseButton = function () {
+	const createCloseButton = function() {
 		const closeButton = createEl('div');
 
 		// .button class
@@ -199,7 +195,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {Object}  styled div DOM element
 	 */
-	const createNotificationHeader = function () {
+	const createNotificationHeader = function() {
 		const header = createEl('div');
 		header.style.backgroundColor = '#00aef0';
 		header.style.borderTopLeftRadius = '6px';
@@ -243,7 +239,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {Object}  styled div DOM element
 	 */
-	const createNotificationContent = function (message, linkUrl, linkText, linkClickFunc) {
+	const createNotificationContent = function(message, linkUrl, linkText, linkClickFunc) {
 		const content = createEl('div');
 		content.style.borderRadius = '6px';
 		content.style.setProperty(
@@ -253,7 +249,6 @@ const NotificationsContentScript = (function (win, doc) {
 		);
 
 		const header = createNotificationHeader();
-
 
 		appendChild(content, header);
 		const messageDiv = createEl('div');
@@ -308,8 +303,8 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {Object}  styled div DOM element
 	 */
-	const createUpgradeNotificationContent = function (
-		imageData, title, message, linkUrl, linkText, linkClickFunc
+	const createUpgradeNotificationContent = function(
+		imageData, title, message, linkUrl, linkText
 	) {
 		const content = createEl('div');
 		content.style.cssText = `
@@ -402,7 +397,7 @@ const NotificationsContentScript = (function (win, doc) {
 		`;
 
 		buttonSpan.addEventListener('click', () => {
-			const callback = function () {
+			const callback = function() {
 				removeAlert();
 			};
 			chrome.runtime.sendMessage({
@@ -425,7 +420,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {Object}  styled div DOM element
 	 */
-	const createAlert = function () {
+	const createAlert = function() {
 		let alert_div = doc.getElementById(ALERT_ID);
 		if (alert_div) {
 			alert_div.parentNode.removeChild(alert_div);
@@ -460,7 +455,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @memberOf NotificationsContentScript
 	 * @package
 	 */
-	const showBrowseWindow = function (translations) {
+	const showBrowseWindow = function(translations) {
 		if (ALERT_SHOWN) {
 			return;
 		}
@@ -541,7 +536,12 @@ const NotificationsContentScript = (function (win, doc) {
 
 				const fileReader = new FileReader();
 				fileReader.onload = (fileLoadedEvent) => {
-					const fallback = function () {}; // Workaround for Edge. callback cannot be undefined.
+					// Workaround for Edge. Callback cannot be undefined.
+					const fallback = () => {
+						if (chrome.runtime.lastError) {
+							log('showBrowseWindow error:', chrome.runtime.lastError);
+						}
+					};
 					chrome.runtime.sendMessage({
 						origin: 'notifications',
 						name: 'importFile',
@@ -584,7 +584,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @memberOf NotificationsContentScript
 	 * @package
 	 */
-	const updateBrowseWindow = function (result = {}) {
+	const updateBrowseWindow = function(result = {}) {
 		const s = doc.getElementById('ghostery-browse-window-span');
 		while (s.firstChild) {
 			s.removeChild(s.firstChild);
@@ -607,10 +607,12 @@ const NotificationsContentScript = (function (win, doc) {
 	 * @memberOf NotificationsContentScript
 	 * @package
 	 */
-	const exportFile = function (content) {
+	const exportFile = function(content, type) {
 		const textFileAsBlob = new Blob([content], { type: 'text/plain' });
+		const ext = type === 'Ghostery-Backup' ? 'ghost' : 'json';
 		const d = new Date();
-		const fileNameToSaveAs = `Ghostery-Backup-${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}.ghost`;
+		const dStr = `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
+		const fileNameToSaveAs = `${type}-${dStr}.${ext}`;
 		let url = '';
 		if (window.URL) {
 			url = window.URL.createObjectURL(textFileAsBlob);
@@ -618,43 +620,22 @@ const NotificationsContentScript = (function (win, doc) {
 			url = window.webkitURL.createObjectURL(textFileAsBlob);
 		}
 
-		if (IS_EDGE) { // @EDGE does not support chrome.downloads
-			window.navigator.msSaveBlob(textFileAsBlob, fileNameToSaveAs);
-		} else {
-			const link = createEl('a');
-			link.href = url;
-			link.setAttribute('download', fileNameToSaveAs);
-			document.body.appendChild(link);
-			link.click();
-		}
-	};
-	/**
-	 * Determine if a DOM element is visible to user.
-	 * Used to find if popup is visible.
-	 * @memberOf NotificationsContentScript
-	 * @package
-	 *
-	 * @return {boolean}
-	 */
-	const _isElementInViewport = function (el) {
-		const rect = el.getBoundingClientRect();
-
-		return (
-			rect.top >= 0 &&
-			rect.left >= 0 &&
-			rect.bottom <= (window.innerHeight
-				|| document.documentElement.clientHeight)
-				&& rect.right/* or $(window).height() */
-				<= (window.innerWidth || document.documentElement.clientWidth) /* or $(window).width() */
-		);
+		const link = createEl('a');
+		link.href = url;
+		link.setAttribute('download', fileNameToSaveAs);
+		document.body.appendChild(link);
+		link.click();
 	};
 	/**
 	 * Show popup. It is called in an onMessage handler
 	 * for messages coming from background.js.
 	 * @memberOf NotificationsContentScript
 	 * @package
+	 *
+	 * @param {string} type 	the type of notification to show
+	 * @param {object} options 	message data to pass to the notification
 	 */
-	const showAlert = function (type, options) {
+	const showAlert = function(type, options) {
 		if (ALERT_SHOWN) {
 			return;
 		}
@@ -666,12 +647,13 @@ const NotificationsContentScript = (function (win, doc) {
 				options.campaign.Message,
 				options.campaign.Link,
 				options.campaign.LinkText,
-				(e) => {
+				() => {
 					removeAlert();
 					sendMessage('dismissCMPMessage', { cmp_data: CMP_DATA, reason: 'link' });
 				}
 			);
 		} else if (type === 'showUpgradeAlert') {
+			// major version upgrade
 			if (options) {
 				alert_contents = createUpgradeNotificationContent(
 					bigLogoImage,
@@ -684,9 +666,10 @@ const NotificationsContentScript = (function (win, doc) {
 					}
 				);
 			} else {
+				// minor version upgrade
 				alert_contents = createNotificationContent(
 					NOTIFICATION_TRANSLATIONS.notification_upgrade,
-					'https://github.com/ghostery/ghostery-extension/releases',
+					'https://www.ghostery.com/release-notes',
 					NOTIFICATION_TRANSLATIONS.notification_upgrade_link,
 					() => {
 						removeAlert();
@@ -706,9 +689,6 @@ const NotificationsContentScript = (function (win, doc) {
 
 		const alert_div = createAlert();
 		appendChild(alert_div, alert_contents);
-		if (type === 'showCMPMessage' && _isElementInViewport(alert_div)) {
-			sendMessage('cmpMessageShown', { cmp_data: CMP_DATA, reason: 'offerShown' });
-		}
 	};
 	/**
 	 * Initialize functionality of this script. Set listener
@@ -719,7 +699,7 @@ const NotificationsContentScript = (function (win, doc) {
 	 *
 	 * @return {boolean}
 	 */
-	const _initialize = function () {
+	const _initialize = function() {
 		onMessage.addListener((request, sender, sendResponse) => {
 			if (request.source === 'cliqz-content-script') {
 				return false;
@@ -731,8 +711,7 @@ const NotificationsContentScript = (function (win, doc) {
 				'showCMPMessage',
 				'showBrowseWindow'
 			];
-			const { name } = request;
-			const reqMsg = request.message;
+			const { name, message } = request;
 
 			log('notifications.js received message', name);
 
@@ -744,32 +723,31 @@ const NotificationsContentScript = (function (win, doc) {
 			}
 
 			if (name === 'showCMPMessage') {
-				CMP_DATA = reqMsg.data;
+				CMP_DATA = message.data;
 				showAlert('showCMPMessage', {
 					campaign: CMP_DATA
 				});
 				ALERT_SHOWN = true;
 			} else if (name === 'showUpgradeAlert') {
-				NOTIFICATION_TRANSLATIONS = reqMsg.translations;
-				LANGUAGE = reqMsg.language || 'en';
-				showAlert('showUpgradeAlert', reqMsg.major_upgrade);
+				NOTIFICATION_TRANSLATIONS = message.translations;
+				showAlert('showUpgradeAlert', message.major_upgrade);
 				ALERT_SHOWN = true;
 			} else if (name === 'showLibraryUpdateAlert') {
-				NOTIFICATION_TRANSLATIONS = reqMsg.translations;
-				LANGUAGE = reqMsg.language || 'en';
+				NOTIFICATION_TRANSLATIONS = message.translations;
 				showAlert('showLibraryUpdateAlert');
 				ALERT_SHOWN = true;
 			// Import/Export related messages
 			} else if (name === 'showBrowseWindow') {
-				showBrowseWindow(reqMsg.translations);
+				showBrowseWindow(message.translations);
 				ALERT_SHOWN = true;
 			} else if (name === 'onFileImported') {
-				updateBrowseWindow(reqMsg);
+				updateBrowseWindow(message);
 			} else if (name === 'exportFile') {
-				exportFile(reqMsg);
+				const { content, type } = message;
+				exportFile(content, type);
 			}
 
-			// trigger a response callback to src/background so that we can handler errors properly
+			// trigger a response callback to src/background so that we can handle errors properly
 			sendResponse();
 			return true;
 		});

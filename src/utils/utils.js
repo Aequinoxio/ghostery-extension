@@ -6,26 +6,33 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-shadow: 0 */
-
 /**
  * @namespace BackgroundUtils
  */
-import _ from 'underscore';
-import url from 'url';
+import { debounce } from 'underscore';
+import { URL } from '@cliqz/url-parser';
 import tabInfo from '../classes/TabInfo';
 import globals from '../classes/Globals';
-import { log, objectEntries } from './common';
+import { log } from './common';
 
 const { BROWSER_INFO } = globals;
 const IS_FIREFOX = (BROWSER_INFO.name === 'firefox');
+
+/**
+ * Handle chrome.runtime.lastError messages
+ */
+const defaultCallback = () => {
+	if (chrome.runtime.lastError) {
+		log('defaultCallback error:', chrome.runtime.lastError);
+	}
+};
 
 /**
  * Send message to a specific tab ID.
@@ -36,7 +43,7 @@ const IS_FIREFOX = (BROWSER_INFO.name === 'firefox');
  * @param  {Object} 	message 	message data
  * @param  {function} 	callback	function to call (at most once) when you have a response
  */
-export function sendMessage(tab_id, name, message, callback = function () {}) {
+export function sendMessage(tab_id, name, message, callback = defaultCallback()) {
 	log(`BACKGROUND SENT ${name} TO TAB`);
 	chrome.tabs.sendMessage(tab_id, {
 		name,
@@ -54,7 +61,7 @@ export function sendMessage(tab_id, name, message, callback = function () {}) {
  * @param  {Object} 	message 	message data
  * @param  {function} 	callback 	function to call (at most once) when you have a response
  */
-export function sendMessageToFrame(tab_id, frame_id, name, message, callback = function () {}) {
+export function sendMessageToFrame(tab_id, frame_id, name, message, callback = defaultCallback()) {
 	log(`BACKGROUND SENT ${name} TO TAB ${tab_id} - FRAME ${frame_id}`);
 	chrome.tabs.sendMessage(tab_id, {
 		name,
@@ -72,7 +79,11 @@ export function sendMessageToFrame(tab_id, frame_id, name, message, callback = f
  */
 export function sendMessageToPanel(name, message) {
 	log('BACKGROUND SENDS MESSAGE TO PANEL', name);
-	chrome.runtime.sendMessage({ name,	message });
+	chrome.runtime.sendMessage({ name, message }, () => {
+		if (chrome.runtime.lastError) {
+			log('sendMessageToPanel error:', chrome.runtime.lastError);
+		}
+	});
 }
 
 /**
@@ -101,7 +112,7 @@ export function isValidTopLevelNavigation(details) {
  * (can default to 20 if undefined)
  * @memberOf BackgroundUtils
  */
-export const flushChromeMemoryCache = _.debounce(() => {
+export const flushChromeMemoryCache = debounce(() => {
 	chrome.webRequest.handlerBehaviorChanged();
 }, 1000 * 35, true);
 
@@ -152,22 +163,20 @@ export function processFpeUrl(src) {
  * @memberOf BackgroundUtils
  *
  * @param  {string} src 	the source url
- * @return {Object} 		contains url parts as properties
+ * @return {URL} 		contains url parts as properties
+ *
  */
 export function processUrl(src) {
-	if (!src) {
-		return {};
+	try {
+		const res = new URL(src);
+		return res;
+	} catch (e) {
+		return {
+			protocol: '',
+			hostname: '',
+			pathname: '',
+		};
 	}
-	const res = url.parse(src);
-	const index = res.href ? res.href.indexOf('?') : -1;
-
-	return {
-		protocol: res.protocol ? res.protocol.substr(0, res.protocol.length - 1) : '',
-		host: res.hostname || '',
-		path: res.pathname ? res.pathname.substr(1) : '',
-		host_with_path: (res.host || '') + (res.pathname || ''),
-		anchor: res.hash ? res.hash.substr(1) : '',
-	};
 }
 
 /**
@@ -181,7 +190,15 @@ export function processUrlQuery(src) {
 		return {};
 	}
 
-	return url.parse(src, true).query;
+	try {
+		const res = {};
+		for (const [key, value] of new URL(src).searchParams.entries()) { // eslint-disable-line no-restricted-syntax
+			res[key] = value;
+		}
+		return res;
+	} catch (e) {
+		return {};
+	}
 }
 
 /**
@@ -212,13 +229,55 @@ export function getTab(tab_id, callback, error) {
  *
  * @param  {function} callback		function to call if tab found
  */
-export function getActiveTab(callback) {
+export function getActiveTab(callback, error) {
 	chrome.tabs.query({
 		active: true,
 		currentWindow: true
 	}, (tabs) => {
-		callback(tabs[0]);
+		if (chrome.runtime.lastError) {
+			log('getActiveTab', chrome.runtime.lastError.message);
+			if (error && typeof error === 'function') {
+				error(chrome.runtime.lastError);
+			}
+		} else if (tabs.length === 0) {
+			if (error && typeof error === 'function') {
+				error({ message: 'Active tab not found' });
+			}
+		} else if (callback && typeof callback === 'function') {
+			callback(tabs[0]);
+		}
 	});
+}
+
+/**
+ * Query the first tab that matches the url argument.
+ * Will throw an error if the url argument is an invalid url pattern.
+ * @memberOf BackgroundUtils
+ *
+ * @param {string} url				the tab url to search for
+ * @param {function} callback		function to call if at least one matching tab is found
+ * @param {function} error			function to call if the provided url pattern is invalid or no matching tab is found
+ */
+export function getTabByUrl(url, callback, error) {
+	chrome.tabs.query(
+		{
+			url
+		},
+		(tabs) => {
+			if (chrome.runtime.lastError) {
+				log('getTabByUrl', chrome.runtime.lastError.message);
+				if (error && typeof error === 'function') {
+					error(chrome.runtime.lastError);
+				}
+			} else if (tabs.length === 0) {
+				if (error && typeof error === 'function') {
+					error();
+				}
+			} else if (callback && typeof callback === 'function') {
+				callback(tabs[0]);
+			}
+		}
+	);
 }
 
 /**
@@ -243,6 +302,8 @@ function _openNewTab(data) {
 				active: data.become_active || false
 			});
 		}
+	}, (err) => {
+		log(`_openNewTab Error: ${err}`);
 	});
 }
 /**
@@ -294,9 +355,11 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 			Accept: 'application/json'
 		});
 		if (extraHeaders) {
-			for (const [key, value] of objectEntries(extraHeaders)) {
+			const extraHeadersKeys = Object.keys(extraHeaders);
+			extraHeadersKeys.forEach((key) => {
+				const value = extraHeaders[key];
 				headers.append(key, value);
-			}
+			});
 		}
 		const options = {
 			method,
@@ -306,7 +369,6 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 			credentials
 		};
 		if (method === 'GET' || method === 'HEAD') {
-			// Edge fails to construct Request object for GET and HEAD methods in case body property is present
 			delete options.body;
 		}
 
@@ -319,9 +381,11 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 			// check for 204 status (No Content) from CMP
 			if (response.status === 204) {
 				return false; // send back false to signal no new campaigns
-			} else if (contentType && contentType.includes('application/json')) {
+			}
+			if (contentType && contentType.includes('application/json')) {
 				return response.json();
-			} else if (contentType && contentType.includes('text/html')) {
+			}
+			if (contentType && contentType.includes('text/html')) {
 				return response.text();
 			}
 			return response.text();
@@ -348,14 +412,14 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 	return new Promise(((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 
-		xhr.onload = function () {
+		xhr.onload = function() {
 			// This is called even on 404 etc, so check the status.
 			if (xhr.status >= 200 && xhr.status < 400) {
 				// check for 204 status (No Content) from CMP
 				if (xhr.status === 204) {
 					resolve(false); // send back false to signal no new campaigns
 				} else if (xhr.responseText.includes('{')) {
-					// For pushUserSettings we only get back a string that cannot be parsed
+					// For saveUserSettings we only get back a string that cannot be parsed
 					try {
 						log('_fetchJson resolved', (xhr.responseText) ? JSON.parse(xhr.responseText) : {});
 						// Resolve the promise with the response text
@@ -375,7 +439,7 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 		};
 
 		// Handle network errors
-		xhr.onerror = function (error) {
+		xhr.onerror = function(error) {
 			log('_fetchJson network error', error);
 			reject(new Error(error));
 		};
@@ -386,9 +450,11 @@ function _fetchJson(method, url, query, extraHeaders, referrer = 'no-referrer', 
 		xhr.setRequestHeader('Content-Type', 'application/json');
 		xhr.setRequestHeader('Accept', 'application/json');
 		if (extraHeaders) {
-			for (const [key, value] of objectEntries(extraHeaders)) {
+			const extraHeadersKeys = Object.keys(extraHeaders);
+			extraHeadersKeys.forEach((key) => {
+				const value = extraHeaders[key];
 				xhr.setRequestHeader(key, value);
-			}
+			});
 		}
 		xhr.overrideMimeType('application/json');
 		xhr.send(query);
@@ -427,54 +493,6 @@ export function getJson(url, extraHeaders) {
 }
 
 /**
- * Fetch local image resource files asynchronously.
- * @memberOf BackgroundUtils
- *
- * @param  {string} url		URI of local resource
- * @return {Promise}		resolve yields fetched data, reject yields error
- */
-export function fetchLocalImageResource(url) {
-	if (typeof fetch === 'function') {
-		return fetch(url, {
-			type: 'image'
-		}).then((response) => {
-			if (!response.ok) {
-				return Promise.reject(new Error(`Failed to fetchLocalImageResource ${url} with status ${response.status} (${response.statusText})`));
-			}
-			return response.text();
-		}).catch((err) => {
-			log(`fetchLocalImageResource error: ${err}`);
-			return Promise.reject(new Error(err));
-		});
-	}
-	return new Promise(((resolve, reject) => {
-		const xhr = new XMLHttpRequest();
-		xhr.onload = function () {
-			// This is called even on 404 etc, so check the status.
-			if (xhr.status >= 200 && xhr.status < 400) {
-				resolve(xhr.responseText);
-			} else {
-				// Otherwise reject with the status text
-				log('fetchLocalImageResource error', xhr.statusText);
-				reject(new Error(xhr.statusText));
-			}
-		};
-
-		// Handle network errors
-		xhr.onerror = function (error) {
-			log('fetchLocalImageResource network error', error);
-			reject(new Error(error));
-		};
-
-		// Make the request
-		log('fetchLocalImageResource request', url);
-		xhr.open('GET', url, true);
-		xhr.overrideMimeType('image/png');
-		xhr.send();
-	}));
-}
-
-/**
  * Fetch local json resource files asynchronously.
  * @memberOf BackgroundUtils
  *
@@ -495,7 +513,7 @@ export function fetchLocalJSONResource(url) {
 	}
 	return new Promise(((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
-		xhr.onload = function () {
+		xhr.onload = function() {
 			// This is called even on 404 etc, so check the status.
 			if (xhr.status >= 200 && xhr.status < 400) {
 				try {
@@ -512,7 +530,7 @@ export function fetchLocalJSONResource(url) {
 		};
 
 		// Handle network errors
-		xhr.onerror = function (error) {
+		xhr.onerror = function(error) {
 			log('fetchLocalJSONResource network error', error);
 			reject(new Error(error));
 		};
@@ -526,7 +544,189 @@ export function fetchLocalJSONResource(url) {
 }
 
 /**
- * Inject content scripts and CSS into a given tabID.
+ * Like Array.prototype.slice(), but for objects.
+ * Get a property on an object (if props is a property key string),
+ * OR Get a subset of properties (if props is a regex),
+ * OR Get the whole supplied object back (if props is missing, invalid, or produces no matches).
+ * If the property is not defined on the object,
+ * returns the whole object as the val prop of the return object.
+ *
+ * @memberOf BackgroundUtils
+ *
+ * @param	{Object}		obj			The object to extract a property or properties from
+ * @param 	{string|RegExp} props		String name of the property, or regex to match against all properties. Optional.
+ * @return 	{Object}					{ val: undefined|Object, foundMatch: Boolean, err: Boolean, errMsg: undefined|String }
+ */
+export function getObjectSlice(obj, props) {
+	if (obj === undefined || typeof obj !== 'object') {
+		return ({
+			val: undefined,
+			foundMatch: false,
+			err: true,
+			errMsg: 'You must provide an object as the first argument',
+		});
+	}
+
+	if (props === undefined) {
+		return ({
+			val: obj,
+			foundMatch: false,
+			err: false,
+			errMsg: undefined,
+		});
+	}
+
+	if ((typeof props !== 'string') && !(props instanceof RegExp)) {
+		return ({
+			val: obj,
+			foundMatch: false,
+			err: true,
+			errMsg: 'The second argument must be either a property name string, or a regex. Returning whole object.'
+		});
+	}
+
+	if (typeof props === 'string') {
+		if (obj[props] === undefined) {
+			return ({
+				val: obj,
+				foundMatch: false,
+				err: false,
+				errMsg: undefined,
+			});
+		}
+
+		return ({
+			val: { [props]: obj[props] },
+			foundMatch: true,
+			err: false,
+			errMsg: undefined,
+		});
+	}
+
+	// A regex literal has been passed in
+	if (props instanceof RegExp) {
+		const matches = {};
+		Object.keys(obj).forEach((key) => {
+			if (props.test(key)) {
+				matches[key] = obj[key];
+			}
+		});
+		if (Object.keys(matches).length > 0) {
+			return ({
+				val: matches,
+				foundMatch: true,
+				err: false,
+				errMsg: undefined,
+			});
+		}
+	}
+
+	return ({
+		val: obj,
+		foundMatch: false,
+		err: false,
+		errMsg: undefined,
+	});
+}
+
+/**
+ * Pick a random element from the array argument.
+ * If no argument is provided, if the argument is not an array, or if the argument array is empty,
+ * the err property on the return object is set to true, errMsg has details, and val is left undefined.
+ * Otherwise, err is false, errMsg is undefined, and val contains the randomly picked element.
+ *
+ * @memberOf BackgroundUtils
+ *
+ * @param 	{Array} arr			The array to pick a value from. Elements can be of any type(s)
+ * @return	{Object}			{ val: *, err: Boolean, errMsg: undefined|String }
+ */
+export function pickRandomArrEl(arr) {
+	if (arr === undefined) {
+		return ({
+			err: true,
+			errMsg: 'Undefined or no argument provided',
+			val: undefined,
+		});
+	}
+
+	if (!Array.isArray(arr)) {
+		return ({
+			err: true,
+			errMsg: 'The argument must be an array',
+			val: undefined,
+		});
+	}
+
+	const len = arr.length;
+
+	if (len === 0) {
+		return ({
+			err: true,
+			errMsg: 'It is beyond the power of pickRandomArrEl to pick a random element from an empty array',
+			val: undefined,
+		});
+	}
+
+	return ({
+		err: false,
+		errMsg: undefined,
+		val: arr[Math.floor((Math.random() * len))],
+	});
+}
+
+/**
+ * Uppercase the first character of each word in the phrase argument.
+ * Assumes that words are space-separated by default,
+ * but accepts an optional custom string separator argument.
+ *
+ * @memberOf BackgroundUtils
+ *
+ * @param 	{String} phrase					The string to capitalize.
+ * @param	{String|undefined} separator	Separator string. Optional; defaults to a space.
+ * @return	{Object}						{ val: String|undefined, err: Boolean, errMsg: undefined|String }
+ */
+export function capitalize(phrase, separator = ' ') {
+	if (phrase === undefined) {
+		return ({
+			err: true,
+			errMsg: 'Undefined or no argument provided',
+			val: undefined,
+		});
+	}
+
+	if (typeof phrase !== 'string') {
+		return ({
+			err: true,
+			errMsg: 'The first argument must be a string',
+			val: undefined,
+		});
+	}
+
+	if (typeof separator !== 'string') {
+		return ({
+			err: true,
+			errMsg: 'The second argument is optional, but must be a string if provided',
+			val: undefined,
+		});
+	}
+
+	const words = phrase.split(separator);
+	const trimmedWords = words.map(word => word.trim());
+	const capitalizedWords = trimmedWords.map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`);
+
+	return ({
+		err: false,
+		errMsg: undefined,
+		val: capitalizedWords.join(separator),
+	});
+}
+
+/**
+ * Inject content scripts and CSS into a given tabID (top-level frame only).
+ * Note: Chrome 61 blocks content scripts on the new tab page. Be
+ * sure to check the current URL before calling this function, otherwise Chrome will throw
+ * a permission error
+ *
  * @memberOf BackgroundUtils
  *
  * @param  {number} tabId 		tab id
@@ -537,14 +737,20 @@ export function fetchLocalJSONResource(url) {
  */
 export function injectScript(tabId, scriptfile, cssfile, runAt) {
 	return new Promise((resolve, reject) => {
-		chrome.tabs.executeScript(tabId, { file: scriptfile, runAt }, (result) => {
+		chrome.tabs.executeScript(tabId, { file: scriptfile, runAt }, () => {
 			if (chrome.runtime.lastError) {
 				log('injectScript error', chrome.runtime.lastError);
 				reject(new Error(chrome.runtime.lastError));
+				return;
 			}
 
 			if (cssfile) {
 				chrome.tabs.insertCSS(tabId, { file: cssfile, runAt }, () => {
+					if (chrome.runtime.lastError) {
+						log('insertCSS error', chrome.runtime.lastError);
+						reject(new Error(chrome.runtime.lastError));
+						return;
+					}
 					resolve();
 				});
 			} else {
@@ -568,8 +774,10 @@ export function injectNotifications(tab_id, importExport = false) {
 		return Promise.resolve(true);
 	}
 	const tab = tabInfo.getTabInfo(tab_id);
-	// check for prefetching and chrome new tab page
-	if (tab && tab.prefetched === true || (tab.path && tab.path.includes('_/chrome/newtab')) || (!importExport && globals.EXCLUDES.includes(tab.host))) {
+	// check for prefetching, non http/s pages and Chrome (< 75) or Edge new tab page
+	if (tab && (tab.prefetched === true || !tab.protocol.startsWith('http') ||
+		tab.path.includes('_/chrome/newtab') || tab.host.includes('ntp.msn.com') ||
+		(!importExport && globals.EXCLUDES.includes(tab.host)))) {
 		// return false to prevent sendMessage calls
 		return Promise.resolve(false);
 	}
@@ -584,12 +792,21 @@ export function injectNotifications(tab_id, importExport = false) {
 }
 
 /**
- * Checks if CMP data has the structure of a Cliqz offer.
- * @memberOf BackgroundUtils
- *
- * @param  {Object} 	offer   CMP object to check
- * @return {boolean} 			true means that this CMP data is actually a Cliqz Offer
+ * Compare semantic version strings
+ * @param  {string} a 	semantic version (x.x.x)
+ * @param  {string} b 	semantic version (x.x.x)
+ * @return {int}		(a > b) = 1, (a < b) = -1, (a == b) = 0
  */
-export function isCliqzOffer(offer) {
-	return (offer && offer.origin === 'cliqz' && offer.type === 'offers' && offer.data);
+export function semverCompare(a, b) {
+	const pa = a.split('.');
+	const pb = b.split('.');
+	for (let i = 0; i < 3; i++) {
+		const na = Number(pa[i]);
+		const nb = Number(pb[i]);
+		if (na > nb) return 1;
+		if (nb > na) return -1;
+		if (!Number.isNaN(na) && Number.isNaN(nb)) return 1;
+		if (Number.isNaN(na) && !Number.isNaN(nb)) return -1;
+	}
+	return 0;
 }

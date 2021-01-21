@@ -1,40 +1,38 @@
 {
 	"account_creation_privacy_statement": {
-		"message": "本人同意 Ghostery 的 $LINK_PS_START$隱私聲明$LINK_PS_END$中所陳述的資處理手法和 $LINK_UA_START$許可證協議$LINK_UA_END$中的條款。\n",
+		"message": "我們的$LINK_TERMS_START$條款與條件$LINK_TERMS_END$ 和我們的 $LINK_UA_START$許可協議$LINK_UA_END$ 適用。您可以找到我們的隱私聲明$LINK_PS_START$here$LINK_PS_END$。",
 		"placeholders": {
 			"link_ps_end": {
 				"content": "</a>"
 			},
 			"link_ps_start": {
-				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-us/privacy-statements/ghostery-browser-extension/ghostery-browser-extension-end-user-license-agreem/\">"
+				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-ghostery/browser-extension-privacy-policy/\" rel=\"noopener noreferrer\">"
 			},
 			"link_ua_end": {
 				"content": "</a>"
 			},
 			"link_ua_start": {
-				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-us/privacy-statements/ghostery-browser-extension/ghostery-browser-extension-end-user-license-agreem/\">"
+				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-ghostery/privacy-statements/\" rel=\"noopener noreferrer\">"
+			},
+			"link_terms_end": {
+				"content": "</a>"
+			},
+			"link_terms_start": {
+				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-ghostery/ghostery-terms-and-conditions/\" rel=\"noopener noreferrer\">"
 			}
 		}
-	},
-	"all": {
-		"description": "Default setting in the 'filter by type' dropdown for the tag browser. Doesn't filter anything out. Should read as 'Show all'.",
-		"message": "全部"
 	},
 	"banner_check_your_email_title": {
 		"message": "請稍後查閱您的電郵用一條鏈接來重設您的密碼。"
 	},
-	"banner_no_such_account_message": {
-		"message": "看來我們找不到這個電郵與密碼的組合。再試一次。"
+	"banner_email_not_in_system_message": {
+		"message": "抱歉，該電子郵件不在我們系統。"
 	},
 	"blacklist_error_duplicate_url": {
 		"message": "此網站已經受到限制。"
 	},
 	"blacklist_error_whitelist_url": {
 		"message": "此網站已從您的可信任網站名單中移除，並加入到您的受限制網站名單之中。"
-	},
-	"blocked": {
-		"description": "Select this to show only blocked (checked) tags in the tag browser. Should read as 'Show all'.",
-		"message": "已封鎖"
 	},
 	"blocked_redirect_action_always_title": {
 		"description": "Title for the 'Allow always and reload' button on the blocked redirect page.",
@@ -192,12 +190,6 @@
 			}
 		}
 	},
-	"box_hide": {
-		"message": "隱藏方塊"
-	},
-	"box_hide_expanded": {
-		"message": "隱藏紫色方塊"
-	},
 	"box_looking": {
 		"message": "外觀"
 	},
@@ -294,7 +286,7 @@
 		"message": "社交媒體"
 	},
 	"category_social_media_desc": {
-		"description": "User-facing description for the Comments tag category.",
+		"description": "User-facing description for the Social Media tag category.",
 		"message": "包括與社交媒體平台相關的功能。"
 	},
 	"category_uncategorized": {
@@ -308,7 +300,7 @@
 		"message": "准許及重新載入。"
 	},
 	"click2play_allow_once_button_tooltip": {
-		"description": "Tooltip that appears over the click2play replacement for 'social' buttons",
+		"description": "Tooltip that appears over the click2play replacement for 'social' buttons.",
 		"message": "Ghostery 封鎖了 $APP_NAME$。點擊這裏以准許它只重新載入這一次。",
 		"placeholders": {
 			"app_name": {
@@ -366,34 +358,6 @@
 			}
 		}
 	},
-	"consent_privacy": {
-		"message": "必需您的同意。"
-	},
-	"copyright": {
-		"description": "Copyright message, shown in page footers.",
-		"message": "$C$ $YEAR$ $GHOSTERY$, $COMPANY_ADDRESS$的附屬機構",
-		"placeholders": {
-			"c": {
-				"content": "&copy;"
-			},
-			"company_address": {
-				"content": "$1",
-				"example": "GHOSTERY, Inc., Such-and-such Street, Such-and-such Floor, New York, NY, Zip Code"
-			},
-			"ghostery": {
-				"content": "<a href='https://www.ghostery.com' target='_blank'>Ghostery</a>"
-			},
-			"year": {
-				"content": "2015"
-			}
-		}
-	},
-	"email_confirm_field_label": {
-		"message": "確認電郵："
-	},
-	"email_field_label": {
-		"message": "電郵："
-	},
 	"error_email_forgot": {
 		"message": "嗯，我找不到那通電郵。或許再試？"
 	},
@@ -402,12 +366,6 @@
 	},
 	"forgot_password_message": {
 		"message": "忘記了密碼？嗨，每個人都遇到。我們會電郵指引給您去重設密碼。"
-	},
-	"invalid_email_confirmation": {
-		"message": "您的這些電郵不脗合。"
-	},
-	"invalid_email_create": {
-		"message": "請輸入一個有效的電郵。"
 	},
 	"invalid_email_forgot": {
 		"message": "很抱歉，您必須輸入一個真實的電郵址。"
@@ -423,12 +381,7 @@
 	},
 	"name": {
 		"description": "The title of this extension (Ghostery).",
-		"message": "$EXTENSION_NAME$ –隱私廣告攔截器",
-		"placeholders": {
-			"extension_name": {
-				"content": "Ghostery"
-			}
-		}
+		"message": "Ghostery – 隱私廣告攔截器"
 	},
 	"none": {
 		"description": "Used to say that this item does not belong to any of the groups, as in \"Groups: None\" (as opposed to \"Groups: Group A, Group B, Group C\").",
@@ -458,8 +411,14 @@
 	"summary_trust_site": {
 		"message": "可信任的網站"
 	},
+	"summary_trust_site_active": {
+		"message": "可信任的網站"
+	},
 	"summary_restrict_site": {
 		"message": "被限制的網站"
+	},
+	"summary_restrict_site_active": {
+		"message": "網站已被限制"
 	},
 	"summary_undo": {
 		"message": "還原"
@@ -467,20 +426,35 @@
 	"summary_pause_ghostery": {
 		"message": "暫停"
 	},
+	"summary_pause_ghostery_tooltip": {
+		"message": "暫停 Ghostery擴充功能。"
+	},
 	"pause_30_min": {
 		"message": "30 分鐘"
+	},
+	"pause_30_min_condensed": {
+		"message": "30分鐘"
 	},
 	"pause_1_hour": {
 		"message": "1 小時"
 	},
+	"pause_1_hour_condensed": {
+		"message": "1小時"
+	},
 	"pause_24_hours": {
 		"message": "24 小時"
 	},
-	"summary_resume_ghostery": {
-		"message": "恢復"
+	"pause_24_hours_condensed": {
+		"message": "24小時"
 	},
-	"summary_map_these_trackers": {
-		"message": "映射這些跟踪器"
+	"summary_resume_ghostery": {
+		"message": "恢復 Ghostery 運行"
+	},
+	"summary_resume_ghostery_tooltip": {
+		"message": "Ghostery擴充功能已暫停。點擊以恢復。"
+	},
+	"summary_show_menu": {
+		"message": "顯示菜單"
 	},
 	"blocking_trackers": {
 		"message": "網頁跟蹤器"
@@ -501,14 +475,15 @@
 		"description": "as in '5 (trackers) BLOCKED'",
 		"message": "已封鎖"
 	},
-	"panel_create_account": {
-		"message": "創建帳戶"
+	"blocking_category_whitelisted": {
+		"description": "as in '5 (trackers) WHITELISTED'",
+		"message": "已列入解封名單"
 	},
 	"panel_email_verification_sent": {
 		"message": "$BOLD_HTML_STARTS$ 成功!$BOLD_HTML_END$ 一通帳戶驗證電郵已發至 $EMAIL$",
 		"placeholders": {
 			"bold_html_end": {
-				"content": "<strong>"
+				"content": "</strong>"
 			},
 			"bold_html_starts": {
 				"content": "<strong>"
@@ -519,7 +494,7 @@
 			}
 		}
 	},
-	"panel_forgot_password": {
+	"forgot_password": {
 		"message": "忘記了密碼？"
 	},
 	"panel_help_panel_header": {
@@ -537,8 +512,35 @@
 	"panel_help_questions_header": {
 		"message": "問題與評論"
 	},
-	"panel_help_support": {
-		"message": "支援"
+	"panel_help_setup": {
+		"message": "安裝 Ghostery"
+	},
+	"panel_insights_audit_tags": {
+		"message": "審查網頁上的行銷標籤",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 30."
+	},
+	"panel_insights_promotion_explore_trends": {
+		"message": "探索全球數位趨勢",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 29."
+	},
+	"panel_insights_promotion_call_to_action": {
+		"message": "免費試用"
+	},
+	"panel_insights_promotion_header": {
+		"message": "試用 Ghostery Insights",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 35."
+	},
+	"panel_insights_promotion_description": {
+		"message": "透過我們專業的標籤分析工具，加速並清理數位用戶體驗。",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 90."
+	},
+	"panel_insights_promotion_trace_poor_performance": {
+		"message": "追溯不良性能的源頭",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 33."
+	},
+	"panel_insights_promotion_watch_pings": {
+		"message": "實時監測 Ping",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 29."
 	},
 	"panel_about_panel_header": {
 		"message": "關於 Ghostery 網頁瀏覽器增強功能"
@@ -556,14 +558,23 @@
 			}
 		}
 	},
+	"panel_about_release_notes": {
+		"message": "閱讀發佈說明以了解所有更新"
+	},
 	"panel_about_license": {
-		"message": "准許證協議"
+		"message": "Mozilla公共許可協議"
 	},
 	"panel_about_privacy_statement": {
 		"message": "隱私聲明"
 	},
+	"panel_about_terms_and_conditions": {
+		"message": "條款及條件"
+	},
 	"panel_about_licenses": {
 		"message": "軟體准許證"
+	},
+	"panel_about_imprint": {
+		"message": "版本說明"
 	},
 	"panel_menu_settings": {
 		"message": "設定"
@@ -580,11 +591,14 @@
 	"panel_menu_about": {
 		"message": "有關"
 	},
-	"panel_menu_signin": {
-		"message": "登入"
+	"global_settings_saved": {
+		"message": "全球設定已儲存"
 	},
-	"panel_menu_signout": {
-		"message": "登出"
+	"global_settings_saved_tracker": {
+		"message": "全球追蹤器設定已儲存"
+	},
+	"global_settings_saved_category": {
+		"message": "全球類別設定已儲存"
 	},
 	"panel_needs_reload": {
 		"message": "Ghostery 即將發佈更新。"
@@ -601,7 +615,7 @@
 			},
 			"trackers": {
 				"content": "$2",
-				"example": "網頁跟蹤器"
+				"example": "trackers"
 			}
 		}
 	},
@@ -617,30 +631,27 @@
 			},
 			"trackers": {
 				"content": "$2",
-				"example": "網頁跟蹤器"
+				"example": "trackers"
 			}
 		}
 	},
 	"panel_tracker_slow_non_secure_end": {
 		"message": " 在此網貝。"
 	},
-	"tracker_signular": {
-		"message": "網頁跟蹤器"
-	},
-	"tracker_plural": {
-		"message": "網頁跟蹤器"
+	"panel_tracker_total_tooltip": {
+		"message": "已發現的網頁跟蹤器和更動的請求總數。"
 	},
 	"panel_signin_success": {
 		"message": "您現在登入為 "
+	},
+	"panel_signin_premium_benefits": {
+		"message": "您的帳戶解鎖了我們 Premium 好處的免費試用，包括可透過 Ghostery Midnight 應用程式獲得的 VPN 服務與全裝置的隱私防護。"
 	},
 	"panel_view_trackers": {
 		"message": "觀看網頁跟蹤器"
 	},
 	"panel_signin_success_title": {
 		"message": "恭喜您!您的 Ghostery 帳戶已準備就緒。"
-	},
-	"panel_title_create_account": {
-		"message": "創建帳戶"
 	},
 	"panel_tracker_found_sources_title": {
 		"message": "偵測到的網頁跟蹤器 URLs："
@@ -657,6 +668,12 @@
 	"panel_tracker_warning_slow_tooltip": {
 		"message": "網頁跟縱器工作緩慢"
 	},
+	"panel_tracker_warning_smartblock_tooltip": {
+		"message": "追蹤器已被智能瀏覽功能封鎖"
+	},
+	"panel_tracker_warning_smartunblock_tooltip": {
+		"message": "追蹤器已被智能瀏覽功能解封"
+	},
 	"panel_tracker_block_tooltip": {
 		"message": "封鎖全部網站"
 	},
@@ -665,6 +682,9 @@
 	},
 	"panel_tracker_trust_tooltip": {
 		"message": "信任此網站"
+	},
+	"panel_tracker_scrub_tooltip": {
+		"message": "在此網站上匿名"
 	},
 	"panel_detail_menu_list_title": {
 		"message": "列表視圖"
@@ -675,38 +695,23 @@
 	"panel_detail_menu_performance_title": {
 		"message": "功效"
 	},
-	"panel_detail_menu_rewards_title": {
-		"message": "獎賞"
-	},
-	"panel_detail_menu_premium_title": {
-		"message": "高級版"
-	},
 	"panel_detail_learn_more": {
-		"message": "瞭解更多"
+	  "message": "瞭解更多"
 	},
 	"panel_detail_history_title": {
 		"message": "歷史"
 	},
 	"panel_detail_history_text": {
-		"message": "即將添加的功能"
+		"message": "即將添加的功能。"
 	},
 	"panel_detail_performance_title": {
 		"message": "網站功能"
 	},
 	"panel_detail_performance_text": {
-		"message": "即將添加的功能"
-	},
-	"panel_detail_rewards_title": {
-		"message": "Ghostery 獎賞"
-	},
-	"panel_detail_rewards_text": {
-		"message": "即將添加的功能"
-	},
-	"panel_detail_premium_title": {
-		"message": "Ghostery 高級版"
+		"message": "即將添加的功能。"
 	},
 	"panel_detail_premium_text": {
-		"message": "即將添加的功能"
+		"message": "即將添加的功能。"
 	},
 	"notification_upgrade": {
 		"message": "我們的團隊又敬業又可愛非凡，一直努力工作好釋出新版的 Ghostery。"
@@ -714,14 +719,20 @@
 	"notification_upgrade_link": {
 		"message": "這個版本新增了一些貼心功能，並修復了錯誤。"
 	},
+	"notification_upgrade_title_v8": {
+		"message": "介紹 Ghostery 8!"
+	},
+	"notification_upgrade_v8": {
+		"message": "設定我們新的酷功能及學習我們迄今最巨大的版本。"
+	},
+	"notification_upgrade_link_v8": {
+		"message": "現在顯示給我看!"
+	},
 	"notification_library_update": {
 		"message": "我們已發現一些新的網頁跟縱器，並把它們加入 Ghostery 的數據庫。"
 	},
 	"notification_library_update_link": {
 		"message": "查看新消息"
-	},
-	"panel_header_sign_in": {
-		"message": "登錄"
 	},
 	"panel_header_verify_account": {
 		"message": "驗證帳戶"
@@ -730,9 +741,6 @@
 		"message": "只允許這些特殊字符：!@#$%^&*=+()<>{}[];:,./?"
 	},
 	"password_field_label": {
-		"message": "密碼"
-	},
-	"create_password_field_label": {
 		"message": "密碼"
 	},
 	"password_requirements": {
@@ -745,7 +753,7 @@
 		"message": "我們似乎發生技術問題。請稍後再試。"
 	},
 	"email_address_in_use": {
-		"message": "那電郵址已有人使用。請選擇另一個。 "
+		"message": "該電子郵件地址已有人使用。請使用另一個。"
 	},
 	"short_description": {
 		"description": "A short description of this extension (Ghostery).",
@@ -765,7 +773,7 @@
 		"message": "已解除封鎖"
 	},
 	"white_black_list_error_invalid_url": {
-		"message": "請輸入一個有效的 URL。"
+		"message": "請輸入一個有效的 URL 或萬用字元。"
 	},
 	"whitelist_error_blacklist_url": {
 		"message": "此網站已從您的受限制網站名單中移除並加入到您的可信任網站名單之中。"
@@ -774,8 +782,23 @@
 		"description": "Options page site whitelisting error message shown when whitelisting a URL that is already in the whitelist.",
 		"message": "此網站已被加入獲准名單之中。"
 	},
+	"settings_adblocker": {
+		"message": "廣告封鎖列表"
+	},
+	"settings_adblocker_lists": {
+		"message": "載入以下廣告封鎖篩選條件列表："
+	},
+	"settings_adblocker_list_1": {
+		"message": "僅廣告"
+	},
+	"settings_adblocker_list_2": {
+		"message": "廣告 + 跟蹤器"
+	},
+	"settings_adblocker_list_3": {
+		"message": "廣告 + 跟蹤器 + 惱人內容"
+	},
 	"settings_purple_box": {
-		"message": "紫色方塊"
+		"message": "追蹤器紀錄"
 	},
 	"settings_notifications": {
 		"message": "通知"
@@ -785,6 +808,9 @@
 	},
 	"settings_account": {
 		"message": "帳戶"
+	},
+	"settings_import_export": {
+		"message": "匯入與匯出設定"
 	},
 	"settings_trackers": {
 		"message": "網頁跟蹤器"
@@ -823,7 +849,7 @@
 		"message": "封鎖中"
 	},
 	"settings_individual_trackers": {
-		"message": "信任與限制個別的網頁跟蹤器"
+		"message": "在一個網站上信任與限制個別的網頁跟蹤器"
 	},
 	"settings_allow_trackers": {
 		"message": "准許由網站擁有者所創造的網頁跟縱器"
@@ -832,7 +858,7 @@
 		"message": "默認封鎖被加入 Ghostery 的新網頁跟蹤器"
 	},
 	"settings_show_purple_box": {
-		"message": "在我的網頁瀏覽器的角落顯示此紫色的方塊"
+		"message": "在瀏覽器角落顯示追蹤器紀錄"
 	},
 	"settings_dismiss_after": {
 		"message": "在此時間後撤除："
@@ -859,7 +885,7 @@
 		"message": "秒"
 	},
 	"settings_hide_alert_trusted": {
-		"message": "隱藏可信任網站的紫色方塊"
+		"message": "隱藏可信任網站的追蹤器紀錄"
 	},
 	"settings_notify_me": {
 		"message": "當 Ghostery 作以下行動時通知我："
@@ -869,6 +895,9 @@
 	},
 	"settings_new_features": {
 		"message": "發佈新功能"
+	},
+	"settings_new_promotions": {
+		"message": "擁有產品促銷活動"
 	},
 	"settings_new_trackers": {
 		"message": "添加新的網頁跟蹤器到其網頁跟蹤器文庫"
@@ -891,8 +920,8 @@
 	"settings_share_human_web": {
 		"message": "分享人文網 (Human Web ) 的資料"
 	},
-	"settings_allow_offers": {
-		"message": "參與 Ghostery 獎賞計劃"
+  	"settings_allow_abtests": {
+	  	"message": "參加 A/B 測試"
 	},
 	"settings_signin_create_header": {
 		"message": "登錄/創建帳戶"
@@ -921,6 +950,9 @@
 	"settings_export_error": {
 		"message": "您的設定未能成功匯出。請稍後再試。"
 	},
+	"settings_export_reserved_page_error": {
+		"message": "當前的網頁是瀏覽器所保留的網頁之一，所以Ghostery不能導出設定。請瀏覽其他網頁並再次嘗試。"
+	},
 	"settings_import_header": {
 		"message": "匯入設定"
 	},
@@ -932,6 +964,9 @@
 	},
 	"settings_import_success": {
 		"message": "您的設定已被成功匯入於。"
+	},
+	"settings_import_dialog_error": {
+		"message": "當前的網頁是瀏覽器所保留的網頁之一，Ghostery不能顯示瀏覽器對話框。請瀏覽其他網頁並再次嘗試。"
 	},
 	"settings_import_file_error": {
 		"message": "那是不正確的文檔類型。請選擇一個 .ghost 文檔並再次嘗試。"
@@ -958,13 +993,13 @@
 		"message": "有時當某個網頁跟蹤器被封鎖之後，像社交媒體分享、評論或視訊播放器之類的功能將不能使用。如果您想啟動這些被封鎖的功能之一，請點擊網頁上的這個圖標："
 	},
 	"settings_individual_trackers_tooltip": {
-		"message": "選擇要在網頁上封鎖或准許哪個網頁跟蹤器，以作為自選控制。"
+		"message": "在一個特定網站上選擇始終信任或始終限制的特定網頁跟蹤器。"
 	},
 	"settings_allow_trackers_tooltip": {
 		"message": "例如，在 facebook.com 網頁封鎖 Facebook 網頁跟縱器就可能截斷該網頁。"
 	},
 	"settings_show_purple_box_tooltip": {
-		"message": "這個紫色方塊是顯示在您的網頁瀏覽器角落上的實時網頁跟蹤器名單。這個功能將幫助您看到網頁跟縱器被加入到網頁上的過程。"
+		"message": "位於瀏覽器角落的追蹤器紀錄列表會顯示實時載入的追蹤器。"
 	},
 	"settings_notify_me_tooltip": {
 		"message": "容許 Ghostery 在我的網頁瀏覽器上顯示有關於新產品功能、更新及客戶反饋等訊息。"
@@ -975,11 +1010,11 @@
 	"settings_human_web_tooltip": {
 		"message": "Ghostery 現在默認地創設人文網 (Human Web)，那是一種採用群體智慧去建造一個更能保護隠私的互聯網的革命性科技。"
 	},
-	"settings_offers_tooltip": {
-		"message": "Ghostery 獎賞讓您從我們的合夥公司賺取折扣和特別優惠。"
+  	"settings_abtests_tooltip": {
+	  	"message": "參加隨機的 A/B 測試，協助 Ghostery 了解使用者偏好哪一版本的新版面佈局或功能。"
 	},
 	"settings_opt_in": {
-		"message": "選擇加入。"
+		"message": "選擇加入/退出"
 	},
 	"settings_global_blocking": {
 		"message": "全球封鎖"
@@ -996,6 +1031,15 @@
 	"page_load": {
 		"message": "網頁載入"
 	},
+	"requests_modified": {
+		"message": "被更動請求："
+	},
+	"requests_modified_tooltip": {
+		"message": "由反追蹤及廣告封鎖功能更動的追蹤請求及元素總數量"
+	},
+	"trackers_blocked": {
+		"message": "跟蹤器被封鎖："
+	},
 	"settings_trusted_restricted_sites": {
 		"message": "信任和限制"
 	},
@@ -1003,7 +1047,7 @@
 		"message": "可信任的網站"
 	},
 	"settings_sites_placeholder": {
-		"message": "example.com"
+		"message": "example.com（支援萬用字元）"
 	},
 	"settings_restricted_sites": {
 		"message": "被限制的網站"
@@ -1022,57 +1066,6 @@
 	},
 	"blocking_category_tracker_found": {
 		"message": "發現"
-	},
-	"drawer_title_enable_anti_tracking": {
-		"message": "強化的反跟蹤"
-	},
-	"drawer_tooltip_enable_anti_tracking": {
-		"message": "綜合網頁跟蹤器記錄大多數網站上的用戶活動，而反跟蹤則消除所有可能用來辨識您的資料，使這些跟蹤器無法蒐集這些資料。此數字顯示有多少數據點已從此網站上被清除掉。"
-	},
-	"drawer_label_enable_anti_tracking": {
-		"message": "網頁跟蹤器已暱藏身份"
-	},
-	"drawer_desc_enable_anti_tracking": {
-		"message": "私人點據點已被清除掉。"
-	},
-	"drawer_status_enable_anti_tracking": {
-		"message": "反跟蹤就是"
-	},
-	"drawer_title_enable_ad_block": {
-		"message": "強反了的廣告封鎖"
-	},
-	"drawer_tooltip_enable_ad_block": {
-		"message": "顯示或封鎖在網站上的所有廣告。"
-	},
-	"drawer_label_enable_ad_block": {
-		"message": "廣告被封鎖了"
-	},
-	"drawer_desc_enable_ad_block": {
-		"message": "廣告位被封鎖了。"
-	},
-	"drawer_status_enable_ad_block": {
-		"message": "廣告封鎖就是"
-	},
-	"drawer_title_enable_smart_block": {
-		"message": "聰明的封鎖"
-	},
-	"drawer_tooltip_enable_smart_block": {
-		"message": "自動封鎖及解封網頁跟蹤器以優化網頁的效率。"
-	},
-	"drawer_label_enable_smart_block": {
-		"message": "網頁跟蹤器已被調節"
-	},
-	"drawer_desc_enable_smart_block": {
-		"message": "網頁跟蹤器已暫時被封鎖或被解封。"
-	},
-	"drawer_status_enable_smart_block": {
-		"message": "聰明的封鎖就是"
-	},
-	"drawer_on": {
-		"message": "啟動"
-	},
-	"drawer_off": {
-		"message": "關閉"
 	},
 	"blocking_unblock_all": {
 		"message": "解封全部"
@@ -1102,43 +1095,76 @@
 		"message": "已解封的網頁跟蹤器"
 	},
 	"settings_filter_new": {
-		"message": "自從上次更新後的新增功能"
+		"message": "新的網頁跟蹤器"
 	},
-	"tooltip_anti_track": {
-		"message": "強化的反跟蹤"
+	"alert_ghostery_paused": {
+		"message": "Ghostery擴充功能已暫停。"
 	},
-	"tooltip_anti_track_body": {
-		"message": "隱暱已解封及不明網頁跟蹤器的名稱，以加強網頁瀏覽保護。"
+	"alert_ghostery_resumed": {
+		"message": "Ghostery擴充功能已恢復。"
 	},
-	"tooltip_ad_block": {
-		"message": "強反了的廣告封鎖"
+	"alert_anti_track_on": {
+		"message": "啟用反追蹤功能。個人資料將作匿名處理。"
 	},
-	"tooltip_ad_block_body": {
-		"message": "封鎖您登訪網站的廣告。"
+	"alert_anti_track_off": {
+		"message": "停用反追蹤功能。個人資料將不作匿名處理。"
 	},
-	"tooltip_smart_block": {
-		"message": "聰明的封鎖"
+	"alert_ad_block_on": {
+		"message": "啟用廣告封鎖功能。廣告將被封鎖。"
 	},
-	"tooltip_smart_block_body": {
-		"message": "自動封鎖及解封網頁跟蹤器以優化網頁的效率。"
+	"alert_ad_block_off": {
+		"message": "停用廣告封鎖功能。廣告將不被封鎖。"
+	},
+	"alert_smart_block_on": {
+		"message": "啟用智能瀏覽功能。將調整追蹤器封鎖功能以最佳化頁面性能。"
+	},
+	"alert_smart_block_off": {
+		"message": "停用智能瀏覽功能。將不會自動調整追蹤器封鎖功能。"
+	},
+	"alert_reload": {
+		"message": "重新載入以觀看變化。"
+	},
+	"alert_site_trusted": {
+		"message": "網站被列入解封名單中。在此網站，跟蹤器獲准運行， 而反跟蹤功能則被關閉。"
+	},
+	"alert_site_trusted_off": {
+		"message": "網站不再被列入解封名單中。"
+	},
+	"alert_site_restricted": {
+		"message": "網站被列入黑名單中。在此網站，跟蹤器將被封鎖， 而反跟蹤功能則被啟動。"
+	},
+	"alert_site_restricted_off": {
+		"message": "網站已從黑名單中被剔除。"
+	},
+	"tooltip_anti_track_on": {
+		"message": "個人資料作匿名處理"
+	},
+	"tooltip_body_in_cliqz": {
+		"message": "此功能在Cliqz瀏覽器中已在默認情況下啟動了。"
+	},
+	"tooltip_ad_block_on": {
+		"message": "廣告已被封鎖。"
+	},
+	"tooltip_smart_block_on": {
+		"message": "跟蹤器封鎖功能被調整以優化網頁效能。"
 	},
 	"tooltip_trust": {
 		"message": "在此網站永遠准許網頁跟蹤器。"
 	},
+	"tooltip_trust_on": {
+		"message": "在此網站，跟蹤器獲准運行， 而反跟蹤功能則被關閉。點擊以取消上次行動。\n"
+	},
 	"tooltip_restrict": {
 		"message": "在此網站永遠封鎖網頁跟蹤器。"
 	},
+	"tooltip_restrict_on": {
+		"message": "在此網站，跟蹤器已被封鎖， 而反跟蹤功能則已啟動。點擊以取消上次行動。\n"
+	},
 	"tooltip_pause": {
-		"message": "暫停 Ghostery"
+		"message": "暫停"
 	},
 	"tooltip_resume": {
 		"message": "恢復 Ghostery 運行"
-	},
-	"tooltip_expert": {
-		"message": "詳細圖示"
-	},
-	"tooltip_simple": {
-		"message": "簡單圖示"
 	},
 	"license_module": {
 		"message": "模塊"
@@ -1173,196 +1199,7 @@
 	"license_licenses": {
 		"message": "准許證"
 	},
-	"setup_title": {
-		"message": "Ghostery 安裝"
-	},
-	"setup_header_sign_in": {
-		"message": "登錄"
-	},
-	"setup_header_email": {
-		"message": "電郵："
-	},
-	"setup_header_password": {
-		"message": "密碼"
-	},
-	"setup_choice_view_title": {
-		"message": "有 Ghostery，網頁瀏覽器變得更聰明!$BR$您想如何開始?",
-		"placeholders": {
-			"br": {
-				"content": "<br />"
-			}
-		}
-	},
-	"setup_choice_view_one_click": {
-		"message": "一擊安裝"
-	},
-	"setup_choice_view_share_data": {
-		"message": "分享我的分析和人文網 (Human Web) 資料以改善 Ghostery 的效能。"
-	},
-	"setup_choice_view_learn_more": {
-		"message": "瞭解更多。"
-	},
-	"setup_choice_view_custom_setup": {
-		"message": "自選裝設"
-	},
-	"setup_choice_view_answer_questions": {
-		"message": "藉着回答一些短問題來選擇自己的設置。"
-	},
-	"setup_blocking_view_title": {
-		"message": "Ghostery 能夠封鎖網頁跟蹤器，使您的網頁瀏覽器變得更乾淨、更快速及更安全。您想封鎖甚麼？"
-	},
-	"setup_blocking_view_block_nothing": {
-		"message": "沒甚麼"
-	},
-	"setup_blocking_view_block_ads": {
-		"message": "唯獨廣告跟蹤器"
-	},
-	"setup_blocking_view_block_everything": {
-		"message": "所有東西"
-	},
-	"setup_blocking_view_block_custom": {
-		"message": "自選"
-	},
-	"setup_additional_view_title": {
-		"message": "您喜歡用我們推薦的功能去做更聰明的瀏覽嗎?"
-	},
-	"setup_additional_view_enabled": {
-		"message": "已啟用"
-	},
-	"setup_additional_view_antitrack_title": {
-		"message": "強化的反跟蹤"
-	},
-	"setup_additional_view_antitrack_desc": {
-		"message": "隱暱已解封及不明網頁跟蹤器的名稱，以加強網頁瀏覽保護。"
-	},
-	"setup_additional_view_adblock_title": {
-		"message": "強反了的廣告封鎖"
-	},
-	"setup_additional_view_adblock_desc": {
-		"message": "封鎖您登訪網站的所有廣告。"
-	},
-	"setup_additional_view_smartblock_title": {
-		"message": "聰明的封鎖"
-	},
-	"setup_additional_view_smartblock_desc": {
-		"message": "自動封鎖及解封網頁跟蹤器以優化網頁的效率。"
-	},
-	"setup_display_view_title": {
-		"message": "您喜歡那種顯示？"
-	},
-	"setup_display_view_simple": {
-		"message": "簡單的"
-	},
-	"setup_display_view_simple_desc": {
-		"message": "顯示基本的封鎖資料。"
-	},
-	"setup_display_view_detailed": {
-		"message": "詳細的"
-	},
-	"setup_display_view_detailed_desc": {
-		"message": "列出網頁跟蹤器並准許兼具更多功能的自選封鎖。"
-	},
-	"setup_login_view_title": {
-		"message": "您想創建一個 Ghostery 帳戶去使網頁瀏覽器與相關裝置實行同步嗎？"
-	},
-	"setup_login_view_email": {
-		"message": "電郵："
-	},
-	"setup_login_view_email_error": {
-		"message": "很抱歉，您必須輸入一個真實的電郵址。"
-	},
-	"setup_login_view_confirm_email": {
-		"message": "確認電郵："
-	},
-	"setup_login_view_confirm_email_error": {
-		"message": "很抱歉，這些電郵不脗合。"
-	},
-	"setup_login_view_first_name": {
-		"message": "名 (非必填項):"
-	},
-	"setup_login_view_last_name": {
-		"message": "姓 (非必填項):"
-	},
-	"setup_login_view_password": {
-		"message": "密碼"
-	},
-	"setup_login_view_password_error": {
-		"message": "使用 8 至 50 個字符。"
-	},
-	"setup_login_view_terms_error": {
-		"message": "您必須接受此項。"
-	},
-	"setup_login_view_terms": {
-		"message": "我同意 Ghostery 的$LINK_PP_START$隱私政策$LINK_PP_END$ 及 $LINK_TERMS_START$使用條款$LINK_TERMS_END$",
-		"placeholders": {
-			"link_pp_start": {
-				"content": "a href=\"https://www.ghostery.com/about-ghostery/browser-extension-privacy-policy/\" target=\"_blank\">"
-			},
-			"link_pp_end": {
-				"content": "</a>"
-			},
-			"link_terms_start": {
-				"content": "<a href=\"https://www.ghostery.com/about-ghostery/browser-extension-end-user-license-agreement/\" target=\"_blank\">"
-			},
-			"link_terms_end": {
-				"content": "</a>"
-			}
-		}
-	},
-	"setup_login_view_create_account": {
-		"message": "沒有帳戶？創建一個。"
-	},
-	"setup_login_view_log_in": {
-		"message": "已有一個帳戶？登錄"
-	},
-	"setup_login_view_signed_in_as": {
-		"message": "已登錄為"
-	},
-	"setup_data_view_title": {
-		"message": "您願意幫助改善 Ghostery 嗎？"
-	},
-	"setup_data_view_desc": {
-		"message": "我們採用暱名的分析及人文網 (Human Web) 資料去改善 Ghostery 的效能，而毋需蒐集入任何個人資料。$LINK_START$瞭解更多$LINK_END$.",
-		"placeholders": {
-			"link_start": {
-				"content": "<a href=\"https://www.ghostery.com/faqs/\" target=\"_blank\">"
-			},
-			"link_end": {
-				"content": "</a>"
-			}
-		}
-	},
-	"setup_data_view_checkbox": {
-		"message": "分享這些資料去支持 Ghostery。"
-	},
-	"setup_done_view_title": {
-		"message": "您已準備就緒!"
-	},
-	"setup_done_view_desc": {
-		"message": "Ghostery 將寂靜地寄住在您的網頁瀏覽器欄裏。"
-	},
-	"setup_button_previous": {
-		"message": "上一步"
-	},
-	"setup_button_next": {
-		"message": "下一步"
-	},
-	"setup_button_skip": {
-		"message": "略過"
-	},
-	"setup_button_create_account": {
-		"message": "創建帳戶"
-	},
-	"setup_button_sign_in": {
-		"message": "登錄"
-	},
-	"setup_button_exit": {
-		"message": "登出"
-	},
-	"setup_button_done": {
-		"message": "完成"
-	},
-	"setup_footer_license": {
+	"license_footer": {
 		"message": "Ghostery$COPY$; 是 Cliqz 屬下的一家公司。瞭解更多關於$LINK_START$Cliqz$LINK_END$。$COPY$Cliqz International GmbH，是 Cliqz GmbH 全資擁有的子公司。版權所有。",
 		"placeholders": {
 			"link_start": {
@@ -1376,110 +1213,969 @@
 			}
 		}
 	},
-	"setup_upgrade_desc_1": {
-		"message": "$BOLD_START$聰明的封鎖$BOLD_END$ 隨您在網上瀏覽時自動優化效能。",
+	"android_tab_overview": {
+		"message": "概覽"
+	},
+	"android_tab_site_blocking": {
+		"message": "網站封鎖"
+	},
+	"android_tab_global_blocking": {
+		"message": "全球封鎖"
+	},
+	"android_site_blocking_header": {
+		"message": "此網站上的網頁跟蹤器"
+	},
+	"android_global_blocking_header": {
+		"message": "全球追蹤"
+	},
+	"android_blocking_reset": {
+		"message": "重置設定"
+	},
+	"android_block": {
+		"message": "阻止"
+	},
+	"android_unblock": {
+		"message": "解除阻止"
+	},
+	"android_restrict": {
+		"message": "限制"
+	},
+	"android_unrestrict": {
+		"message": "還原"
+	},
+	"android_trust": {
+		"message": "信任"
+	},
+	"android_untrust": {
+		"message": "還原"
+	},
+	"android_anonymize": {
+		"message": "匿名"
+	},
+	"android_anonymized": {
+		"message": "已匿名"
+	},
+	"hub_side_navigation_home": {
+		"message": "首頁"
+	},
+	"hub_side_navigation_upgrade_plan": {
+		"message": "升級計劃"
+	},
+	"hub_side_navigation_tutorial": {
+		"message": "進行一項教程"
+	},
+	"hub_side_navigation_products": {
+		"message": "瀏覽更多 Ghostery 產品。"
+	},
+	"hub_home_page_title": {
+		"message": "Ghostery 中心 - 首頁"
+	},
+	"hub_home_header_text": {
+		"message": "Ghostery已做好準備！"
+	},
+	"hub_home_header_tagline": {
+		"message": "您現在已受到我們的默認設置保護。"
+	},
+	"hub_home_header_tagline_2": {
+		"message": "開始瀏覽！"
+	},
+	"hub_home_header_checkbox_label": {
+		"message": "分享其他的匿名分析資料以改善 Ghostery 的性能。"
+	},
+	"hub_home_header_info_opted_out": {
+		"message": "新用戶的預設為不參與 和人類網絡（Human Web）。您可以在自定義設置或擴展中選擇使用這些推薦的功能。"
+	},
+	"hub_home_header_info": {
+		"message": "新用戶會參與 Human Web。您可以在自訂設置或擴展中更改這個設置。"
+	},
+	"hub_home_header_info_link": {
+		"message": "瞭解更多。"
+	},
+	"hub_home_subheader_optimize": {
+		"message": "優化您的Ghostery體驗"
+	},
+	"hub_home_feature_tutorial_title": {
+		"message": "進行一項教程"
+	},
+	"hub_home_feature_tutorial_text": {
+		"message": "瀏覽Ghostery的主要特色"
+	},
+	"hub_home_feature_tutorial_button_alt": {
+		"message": "教程完成"
+	},
+	"hub_home_feature_setup_text": {
+		"message": "編輯您的設定和阻止偏好。"
+	},
+	"hub_home_feature_setup_button": {
+		"message": "編輯設置"
+	},
+	"hub_home_feature_setup_button_alt": {
+		"message": "自定義設置完成"
+	},
+	"hub_home_plus_upgrade_text": {
+		"message": "獲得更高等級的隱私防護。升級您的 Ghostery 計劃以獲得裝置等級的防護、VPN 存取及更多好處！"
+	},
+	"hub_home_plus_upgrade_button_text": {
+		"message": "立即升級"
+	},
+	"hub_home_plus_full_protection": {
+		"message": "您已受到全面防護！"
+	},
+	"hub_upgrade_page_title": {
+		"message": "Ghostery Hub - 升級計劃"
+	},
+	"hub_upgrade_your": {
+		"message": "升級您的"
+	},
+	"hub_upgrade_protection_plan": {
+		"message": "防護計劃"
+	},
+	"hub_upgrade_yearly": {
+		"message": "每年"
+	},
+	"hub_upgrade_monthly": {
+		"message": "每月"
+	},
+	"hub_upgrade_plan_free": {
+		"message": "免費"
+	},
+	"hub_upgrade_already_protected": {
+		"message": "已受到防護"
+	},
+	"hub_upgrade_basic_protection": {
+		"message": "基本防護"
+	},
+	"hub_upgrade_basic_browser_protection": {
+		"message": "基本瀏覽器防護"
+	},
+	"hub_upgrade_advanced_device_protection": {
+		"message": "進階裝置防護"
+	},
+	"hub_upgrade_maximum_browser_protection": {
+		"message": "最大瀏覽器防護"
+	},
+	"hub_upgrade_to": {
+		"message": "升級至"
+	},
+	"hub_upgrade_scroll_down": {
+		"message": "查看完整功能列表"
+	},
+	"hub_upgrade_midnight_note": {
+		"message": "必須下載 Ghostery Midnight"
+	},
+	"hub_upgrade_additional_protection": {
+		"message": "額外防護"
+	},
+	"hub_upgrade_browser_tracker_blocking": {
+		"message": "瀏覽器跟蹤器封鎖"
+	},
+	"hub_upgrade_browser_ad_blocking": {
+		"message": "瀏覽器廣告封鎖"
+	},
+	"hub_upgrade_custom_blocking_preferences": {
+		"message": "自訂封鎖偏好設定"
+	},
+	"hub_upgrade_extension_themes": {
+		"message": "擴充主題"
+	},
+	"hub_upgrade_historical_extension_stats": {
+		"message": "歷史擴充統計數據"
+	},
+	"hub_upgrade_application_tracker_blocking": {
+		"message": "應用程式跟蹤器封鎖"
+	},
+	"hub_upgrade_application_ad_blocking": {
+		"message": "應用程式廣告封鎖"
+	},
+	"hub_upgrade_no_vpn_logs": {
+		"message": "無 VPN 紀錄"
+	},
+	"hub_upgrade_leak_protection": {
+		"message": "洩漏防護"
+	},
+	"hub_upgrade_physical_servers": {
+		"message": "實體伺服器"
+	},
+	"hub_upgrade_unlimited_bandwidth": {
+		"message": "無限頻寬"
+	},
+	"hub_setup_page_title": {
+		"message": "Ghostery 中心 - 設置 "
+	},
+	"hub_setup_page_title_blocking": {
+		"message": "Ghostery 中心 - 設置阻止"
+	},
+	"hub_setup_page_title_antisuite": {
+		"message": "Ghostery 中心 - Anti-Suite"
+	},
+	"hub_setup_page_title_humanweb": {
+		"message": "Ghostery 中心 - 設置 Human Web"
+	},
+	"hub_setup_page_title_done": {
+		"message": "Ghostery 中心 - 設置完成"
+	},
+	"hub_setup_header_title_blocking": {
+		"message": "Ghostery 能夠阻止網頁跟蹤器，使您的瀏覽器變得更乾淨、更快速及更安全。$NEW_LINE$您希望阻止什麼？",
 		"placeholders": {
-			"bold_start": {
-				"content": "<strong>"
-			},
-			"bold_end": {
-				"content": "<strong>"
+			"new_line": {
+				"content": "<br />"
 			}
 		}
 	},
-	"setup_upgrade_desc_2": {
-		"message": "$BOLD_START$動態使用者介面提供給您$BOLD_END$ 多種顯示選項。",
+	"hub_setup_header_title_antisuite": {
+		"message": "您喜歡用我們推薦的功能去做更聰明的瀏覽嗎?"
+	},
+	"hub_setup_header_title_humanweb": {
+		"message": "您願意幫助改善 Ghostery 嗎？"
+	},
+	"hub_setup_header_title_done": {
+		"message": "自定義設置完成！"
+	},
+	"hub_setup_exit_flow": {
+		"message": "退出自定義設置"
+	},
+	"hub_setup_enter_modal_text": {
+		"message": "輸入自定義設置將覆蓋您之前的Ghostery設定。您是否想要繼續？"
+	},
+	"hub_setup_modal_button_no": {
+		"message": "否"
+	},
+	"hub_setup_modal_button_yes": {
+		"message": "是"
+	},
+	"hub_setup_modal_button_ask_again": {
+		"message": "不要再次問我"
+	},
+	"hub_setup_blocking_text_recommended": {
+		"message": "阻止默認"
+	},
+	"hub_setup_blocking_description_recommended": {
+		"message": "已阻止廣告、網站分析和成人廣告網頁跟蹤器"
+	},
+	"hub_setup_blocking_text_nothing": {
+		"message": "未阻止"
+	},
+	"hub_setup_blocking_description_nothing": {
+		"message": "未阻止網頁跟蹤器"
+	},
+	"hub_setup_blocking_text_everything": {
+		"message": "阻止所有內容"
+	},
+	"hub_setup_blocking_description_everything": {
+		"message": "已阻止的網頁跟蹤器"
+	},
+	"hub_setup_blocking_text_custom": {
+		"message": "從列表中選擇"
+	},
+	"hub_setup_blocking_description_custom": {
+		"message": "選擇阻止哪個網頁跟蹤器"
+	},
+	"hub_setup_antisuite_description_antitracking": {
+		"message": "匿名已解封及不明追蹤器以加強瀏覽防護。"
+	},
+	"hub_setup_feature_already_active": {
+		"message": "這個功能在 Cliqz 瀏覽器中已預設為啟用。$LINK_LM_START$瞭解詳情$LINK_LM_END$",
 		"placeholders": {
-			"bold_start": {
-				"content": "<strong>"
+			"link_lm_start": {
+				"content": "<a href=\"https://www.ghostery.com/faqs/what-are-the-new-ghostery-8-features/\" target=\"_blank\" rel=\"noopener noreferrer\">"
 			},
-			"bold_end": {
-				"content": "<strong>"
-			}
-		}
-	},
-	"setup_upgrade_desc_3": {
-		"message": "$BOLD_START$強化了的反網頁跟蹤$BOLD_END$ 進一步保護您的個人資料。",
-		"placeholders": {
-			"bold_start": {
-				"content": "<strong>"
-			},
-			"bold_end": {
-				"content": "<strong>"
-			}
-		}
-	},
-	"setup_upgrade_button_later": {
-		"message": "或許稍後"
-	},
-	"setup_upgrade_button_go": {
-		"message": "幫我設置"
-	},
-	"setup_upgrade_title": {
-		"message": "歡迎來到 Ghostery 8!"
-	},
-	"setup_upgrade_subtitle": {
-		"message": "最新動態。"
-	},
-	"panel_help_setup": {
-		"message": "Set Up Ghostery"
-	},
-	"global_settings_saved": {
-		"message": "全球設定已儲存"
-	},
-	"global_settings_saved_tracker": {
-		"message": "全球追蹤器設定已儲存"
-	},
-	"global_settings_saved_category": {
-		"message": "全球類別設定已儲存"
-	},
-	"panel_tracker_warning_smartblock_tooltip": {
-		"message": "追蹤器已被智能攔截功能攔截"
-	},
-	"panel_tracker_warning_smartunblock_tooltip": {
-		"message": "追蹤器已被智能攔截功能解封"
-	},
-	"notification_upgrade_title_v8": {
-		"message": "介紹 Ghostery 8!"
-	},
-	"notification_upgrade_v8": {
-		"message": "設定我們新的酷功能及學習我們迄今最巨大的版本。"
-	},
-	"notification_upgrade_link_v8": {
-		"message": "現在顯示給我看!"
-	},
-	"settings_export_reserved_page_error": {
-		"message": "當前的網頁是瀏覽器所保留的網頁之一，所以Ghostery不能導出設定。請瀏覽其他網頁並再次嘗試。"
-	},
-	"settings_import_dialog_error": {
-		"message": "當前的網頁是瀏覽器所保留的網頁之一，Ghostery不能顯示瀏覽器對話框。請瀏覽其他網頁並再次嘗試。"
-	},
-	"setup_header_sign_in_hide": {
-		"message": "隱藏登錄框"
-	},
-	"setup_choice_view_share_data_no_human_web": {
-		"message": "分享我的分析資料以改善 Ghostery 的效能。"
-	},
-	"setup_feature_active_in_cliqz": {
-		"message": "此功能在Cliqz瀏覽器中已在默認情況下啟動了。 $LINK_START$瞭解更多。$LINK_END$",
-		"placeholders": {
-			"link_start": {
-				"content": "<a href=\"https://www.ghostery.com/faqs/what-are-the-new-ghostery-8-features/\" target=\"_blank\">"
-			},
-			"link_end": {
+			"link_lm_end": {
 				"content": "</a>"
 			}
 		}
 	},
-	"setup_data_view_desc_no_human_web": {
-		"message": "我們採用暱名的分析資料去改善 Ghostery 的效能，而毋需蒐集任何個人資料。 $LINK_START$瞭解更多。$LINK_END$.",
+	"hub_setup_antisuite_feature_enabled": {
+		"message": "已啟用"
+	},
+	"hub_setup_humanweb_header": {
+		"message": "我們使用匿名人類網絡數據以改善Ghostery的性能。從未收集個人資料。$LINK_LM_START$Learn More$LINK_LM_END$",
 		"placeholders": {
-			"link_start": {
-				"content": "<a href=\"https://www.ghostery.com/faqs/\" target=\"_blank\">"
+			"link_lm_start": {
+				"content": "<a href=\"https://www.ghostery.com/faqs/human-web-data-collected/\" target=\"_blank\" rel=\"noopener noreferrer\">"
 			},
-			"link_end": {
+			"link_lm_end": {
 				"content": "</a>"
 			}
 		}
-	}		
+	},
+	"hub_setup_humanweb_label": {
+		"message": "分享該資訊以支持 Ghostery"
+	},
+	"hub_setup_ready_heading": {
+		"message": "優化您的Ghostery體驗"
+	},
+	"hub_setup_feature_tutorial_title": {
+		"message": "進行一項教程"
+	},
+	"hub_setup_feature_tutorial_description": {
+		"message": "瀏覽Ghostery的主要特色"
+	},
+	"hub_setup_feature_supporter_description": {
+		"message": "支援Ghostery并解鎖特別福利！"
+	},
+	"hub_setup_feature_products_title": {
+		"message": "瀏覽更多 Ghostery 產品"
+	},
+	"hub_setup_feature_products_description": {
+		"message": "利用我們的全部隱私套件對您進行全方位保護！"
+	},
+	"hub_setup_feature_products_button": {
+		"message": "是的！"
+	},
+	"hub_tutorial_page_title": {
+		"message": "Ghostery 中心 - 教程"
+	},
+	"hub_tutorial_page_title_video": {
+		"message": "Ghostery 中心 - 教程概述"
+	},
+	"hub_tutorial_page_title_trackerlist": {
+		"message": "Ghostery 中心 - 教程網頁追蹤器"
+	},
+	"hub_tutorial_page_title_blocking": {
+		"message": "Ghostery 中心 - 教程阻止"
+	},
+	"hub_tutorial_page_title_layout": {
+		"message": "Ghostery 中心 - 教程佈局"
+	},
+	"hub_tutorial_page_title_trust": {
+		"message": "Ghostery 中心 - 教程信任與限制"
+	},
+	"hub_tutorial_page_title_anti_suite": {
+		"message": "Ghostery 中心 - 教程更多特色"
+	},
+	"hub_tutorial_exit_flow": {
+		"message": "退出教程"
+	},
+	"hub_tutorial_detailed_expanded_view": {
+		"message": "詳細擴展圖示"
+	},
+	"hub_tutorial_video_title": {
+		"message": "Ghostery能為您做什麼"
+	},
+	"hub_tutorial_video_tagline": {
+		"message": "阻止網頁跟蹤器和廣告，保護您的隱私，令頁面加載速度更快。"
+	},
+	"hub_tutorial_trackerlist_title": {
+		"message": "網頁跟蹤器列表"
+	},
+	"hub_tutorial_trackerlist_tagline": {
+		"message": "Ghostery在您訪問的每個網站上列出網頁跟蹤器，從而幫助您了解哪家公司正在跟蹤您。"
+	},
+	"hub_tutorial_blocking_title": {
+		"message": "選擇您想要阻止的內容和方式"
+	},
+	"hub_tutorial_blocking_tagline": {
+		"message": "通過阻止或解除阻止列表中的網頁跟蹤器，掌控您的隱私和瀏覽體驗。"
+	},
+	"hub_tutorial_blocking_allow": {
+		"message": "在當前網站永遠准許網頁跟蹤器。"
+	},
+	"hub_tutorial_blocking_block": {
+		"message": "在當前網站永遠阻止網頁跟蹤器。"
+	},
+	"hub_tutorial_blocking_block_always": {
+		"message": "在每個網站永遠阻止網頁跟蹤器。"
+	},
+	"hub_tutorial_layout_title": {
+		"message": "簡單和詳盡的視圖"
+	},
+	"hub_tutorial_layout_tagline": {
+		"message": "切換于簡單或詳盡的視圖取決于您對Ghostery顯示方式的喜好。"
+	},
+	"hub_tutorial_trust_title": {
+		"message": "信任與限制網站"
+	},
+	"hub_tutorial_trust_tagline": {
+		"message": "一次點擊即可了解網站白名單或黑名單。"
+	},
+	"hub_tutorial_trust_trust_site": {
+		"message": "在此網站永遠准許網頁跟蹤器。"
+	},
+	"hub_tutorial_trust_restrict_site": {
+		"message": "在此網站永遠阻止網頁跟蹤器。"
+	},
+	"hub_tutorial_antisuite_title": {
+		"message": "用我們的增強型隱私特色獲得額外保護和自動控制。"
+	},
+	"hub_tutorial_antisuite_antitracking_description": {
+		"message": "刪除網站可用來確認您身份的數據。"
+	},
+	"hub_products_page_title" : {
+		"message": "Ghostery 中心 - 嘗試其它 Ghostery 產品"
+	},
+	"hub_products_header_title" : {
+		"message": "Ghostery產品讓網頁瀏覽器變得更聰明!"
+	},
+	"hub_products_header_description": {
+		"message": "用我們的全部隱私套件保護和提升您的在線體驗。"
+	},
+	"hub_products_main_promo_title": {
+		"message": "手機隱私瀏覽器"
+	},
+	"hub_products_main_promo_description": {
+		"message": "用我們的已更新和增強的手機瀏覽器隨時無廣告無跟蹤器瀏覽網頁。現已配備私有搜索引擎！"
+	},
+	"hub_products_second_promo_title": {
+		"message": "Ghostery Start Tab"
+	},
+	"hub_products_second_promo_description": {
+		"message": "私人搜索，查看網絡跟蹤器統計，用我們的新標籤頁特色管理。即將推出！"
+	},
+	"hub_products_third_promo_title": {
+		"message": "Ghostery Lite"
+	},
+	"hub_products_third_promo_description": {
+		"message": "用我們的Safari專用最輕產品保護您的網絡隱私，消除廣告騷擾。"
+	},
+	"hub_supporter_page_title": {
+		"message": "Ghostery 中心 - Ghostery Plus"
+	},
+	"hub_supporter_header_title": {
+		"message": "升級至Ghostery Plus"
+	},
+	"hub_supporter_header_description": {
+		"message": "顯示您的支援并解鎖特別福利！"
+	},
+	"hub_supporter_price": {
+		"message": "每月$SUP_START$&#36;$SUP_END$$SPAN_START$2$SPAN_END$",
+		"placeholders": {
+			"sup_start": {
+				"content": "<sup>"
+			},
+			"sup_end": {
+				"content": "</sup>"
+			},
+			"span_start": {
+				"content": "<span>"
+			},
+			"span_end": {
+				"content": "</span>"
+			}
+		}
+	},
+	"hub_supporter_perk_themes_description": {
+		"message": "自訂 Ghostery 色彩——試試我們的深藍色主題吧！"
+	},
+	"hub_supporter_perk_stats_description": {
+		"message": "查看您的組織統計數據，了解Ghostery如何為您工作"
+	},
+	"hub_supporter_perk_more_title": {
+		"message": "優先項支援及更多"
+	},
+	"hub_supporter_perk_more_description": {
+		"message": "用我們的優先幫助服務快速解決問題——還有更多福利"
+	},
+	"hub_supporter_manifesto": {
+		"message": "我們努力免費為我們的客戶提供最佳隱私保護服務。我們的瀏覽器擴充功能不收費，您可以選擇透過每月訂閱 &#36;4.99 支持我們。升級至 Ghostery Plus 加入我們，支持我們的使命——一路解鎖附帶福利！"
+	},
+	"hub_supporter_feature_theme_description": {
+		"message": "自訂 Ghostery 色彩，獲得全新視覺體驗！使用者千呼萬喚的功能登場了。查看我們獨特的深藍色主題，更多內容即將推出。"
+	},
+	"hub_supporter_feature_stats_description": {
+		"message": "用圖表和數據查看歷史阻止結果以揭示趨勢，了解Ghostery如何影響您的瀏覽體驗。"
+	},
+	"hub_supporter_feature_support_description": {
+		"message": "需要幫助？找到崩潰頁面？用我們的優先幫助服務快速回答和解決您的問題，只能通過註冊一個Plus帳戶才可以獲得這項服務。"
+	},
+	"hub_supporter_feature_more_title": {
+		"message": "...更多即將推出！"
+	},
+	"hub_supporter_feature_more_description": {
+		"message": "我們會繼續提升您的Ghostery體驗，敬請期待其他功能推出。"
+	},
+	"hub_signedin_exit": {
+		"message": "返回首頁"
+	},
+	"hub_signedin_header_title": {
+		"message": "您已註冊"
+	},
+	"hub_signedin_as_email": {
+		"message": "已登錄為"
+	},
+	"hub_login_header_title": {
+		"message": "登入您的帳戶"
+	},
+	"hub_login_label_password_invalid": {
+		"message": "使用 8 至 50 個字符。"
+	},
+	"hub_login_link_dont_have_account": {
+		"message": "沒有帳戶？"
+	},
+	"hub_login_link_create_account": {
+		"message": "註冊。"
+	},
+	"hub_login_toast_success": {
+		"message": "成功註冊！您的帳戶設定已被導入。"
+	},
+	"hub_create_account_header_title": {
+		"message": "您想創建一個 Ghostery 帳戶去使網頁瀏覽器與相關裝置實行同步嗎？"
+	},
+	"hub_create_account_label_first_name": {
+		"message": "名 (非必填項):"
+	},
+	"hub_create_account_label_email_last_name": {
+		"message": "姓 (非必填項):"
+	},
+	"hub_create_account_label_password_invalid": {
+		"message": "只允許這些特殊字符：!@#$%^&*=+()<>{}[];:,./?"
+	},
+	"hub_create_account_label_password_invalid_length": {
+		"message": "使用 8 至 50 個字符。"
+	},
+	"hub_create_account_already_have_account": {
+		"message": "已有一個Ghostery帳戶？"
+	},
+	"hub_create_account_link_login": {
+		"message": "在此登錄"
+	},
+	"hub_create_account_toast_success": {
+		"message": "已成功創建帳戶"
+	},
+	"hub_create_account_toast_error": {
+		"message": "該電子郵件地址已有人使用。請使用另一個。"
+	},
+	"enable_when_paused": {
+		"message": "欲使用此功能，請重啟Ghostery。"
+	},
+	"enable_when_whitelisted": {
+		"message": "欲使用此功能，請取消信任網站"
+	},
+	"enable_when_blacklisted": {
+		"message": "欲使用此功能，請取消限制網站。"
+	},
+	"enable_when_not_scanned": {
+		"message": "欲使用此功能，請轉往另一頁。"
+	},
+	"popup_cancel_button": {
+		"message": "取消"
+	},
+	"popup_apply_code_button": {
+		"message": "申請代碼"
+	},
+	"subscription_info": {
+		"message": "訂閱詳情"
+	},
+	"subscription_themes": {
+		"message": "Ghostery主題"
+	},
+	"subscription_themes_title": {
+		"message": "主題"
+	},
+	"subscribe_pitch": {
+		"message": "Ghostery 是免費的，您可以選擇透過每月訂閱 &#36;4.99 支持我們，訂閱後可獲得特別福利，如顏色主題、個人追蹤統計數據以及更多。加入我們，支持我們的使命並訂閱！"
+	},
+	"subscribe_pitch_spring": {
+		"message": "喜歡我們提供的服務嗎？您可以升級至 Ghostery Plus 來支援我們，並解鎖全新春日主題、個人追蹤資訊及其他特別的好處！"
+	},
+	"subscribe_pitch_learn_more": {
+		"message": "瞭解更多"
+	},
+	"subscribe_pitch_button_label": {
+		"message": "獲取Ghostery Plus！"
+	},
+	"subscribe_pitch_no_thanks": {
+		"message": "不用了，謝謝，稍後再說"
+	},
+	"subscribe_pitch_sign_here": {
+		"message": "已訂閱？在此註冊"
+	},
+	"subscribe_pitch_sign_in_plus": {
+		"message": "已訂閱？登入"
+	},
+	"subscribe_pitch_sign_in": {
+		"message": "已訂閱？登入"
+	},
+	"subscription_default_theme": {
+		"message": "預設"
+	},
+	"subscription_dark_blue_theme": {
+		"message": "Dark Blue 主題"
+	},
+	"subscription_palm_theme": {
+		"message": "Palm 主題"
+	},
+	"subscription_leaf_theme": {
+		"message": "Leaf 主題"
+	},
+	"subscription_status": {
+		"message": "狀態"
+	},
+	"subscription_active": {
+		"message": "活躍"
+	},
+	"subscription_inactive": {
+		"message": "不活躍"
+	},
+	"subscription_manage": {
+		"message": "管理我的訂閱"
+	},
+	"subscription_themes_tooltip": {
+		"message": "更改Ghostery的顏色方案。"
+	},
+	"subscription_charge_date" : {
+		"message": "下一個付款日"
+	},
+	"subscription_expired": {
+		"message": "帳戶已過期"
+	},
+	"subscription_auto_renewal": {
+		"message": "自動續費"
+	},
+	"subscription_plan": {
+		"message": "計劃"
+	},
+	"subscription_days_left": {
+		"message": "您的訂閱只剩$DAYS$天了。",
+		"placeholders": {
+			"days": {
+				"content": "$1"
+			}
+		}
+	},
+	"subscription_one_day_left": {
+		"message": "您的訂閱明天到期。"
+	},
+	"subscription_resubscribe": {
+		"message": "再次訂閱"
+	},
+	"subscription_support": {
+		"message": "發現崩潰頁面？是否需要阻止方面的協助？給我們發信息！"
+	},
+	"subscription_submit_issue": {
+		"message": "提交問題"
+	},
+	"subscription_upgrade_to": {
+		"message": "升級至"
+	},
+	"panel_stats_menu_cumulative": {
+		"message": "累計"
+	},
+	"panel_stats_menu_monthly": {
+		"message": "每月"
+	},
+	"panel_stats_menu_daily": {
+		"message": "每日"
+	},
+	"panel_stats_header_title_monthly": {
+		"message": "歷史網頁跟蹤器統計（每月平均）"
+	},
+	"panel_stats_header_title_daily": {
+		"message": "歷史網頁跟蹤器統計（每日平均）"
+	},
+	"panel_stats_trackers_seen": {
+		"message": "已見網頁跟蹤器"
+	},
+	"panel_stats_trackers_blocked": {
+		"message": "已阻止網頁跟蹤器"
+	},
+	"panel_stats_trackers_anonymized": {
+		"message": "匿名數據點"
+	},
+	"panel_stats_ads_blocked": {
+		"message": "廣告被封鎖了"
+	},
+	"panel_stats_cumulative": {
+		"message": "累計"
+	},
+	"panel_stats_monthly": {
+		"message": "每月"
+	},
+	"panel_stats_daily": {
+		"message": "每日"
+	},
+	"panel_stats_reset": {
+		"message": "重置"
+	},
+	"panel_stats_reset_modal_text": {
+		"message": "您的統計歷史將被重置無法恢復此數據。您是否要繼續？"
+	},
+	"panel_stats_reset_modal_yes": {
+		"message": "是，重置"
+	},
+	"panel_stats_reset_modal_no": {
+		"message": "不，保持歷史記錄"
+	},
+	"panel_stats_pitch_modal_text": {
+		"message": "升級至 Ghostery Plus 以解鎖您的歷史統計數據（和其它驚喜福利）。"
+	},
+	"panel_stats_pitch_modal_already": {
+		"message": "已是Ghostery Supporter？"
+	},
+	"panel_stats_pitch_modal_sign_in": {
+		"message": "在此登錄"
+	},
+	"panel_stats_pitch_modal_tooltip": {
+		"message": "及時清除到此點的所有統計歷史。"
+	},
+	"cookie": {
+		"message": "cookie"
+	},
+	"cookies": {
+		"message": "cookies"
+	},
+	"fingerprint": {
+		"message": "指紋"
+	},
+	"fingerprints": {
+		"message": "指紋"
+	},
+	"ad": {
+		"message": "廣告"
+	},
+	"ads": {
+		"message": "廣告"
+	},
+	"create_account_form_legal_consent_checkbox_label": {
+		"message": "我接受$LINK_TERMS_START$條款及條件$LINK_END$、$LINK_LICENSE_START$公共許可協議$LINK_END$，並同意$LINK_PRIVACY_START$隱私政策$LINK_END$中所述的資料處理方式。",
+		"placeholders": {
+			"link_end": {
+				"content": "</a>"
+			},
+			"link_license_start": {
+				"content": "<a target=\"_blank\" href=\"https://www.mozilla.org/en-US/MPL/2.0/\" rel=\"noopener noreferrer\">"
+			},
+			"link_privacy_start": {
+				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-ghostery/browser-extension-privacy-policy/\" rel=\"noopener noreferrer\">"
+			},
+			"link_terms_start": {
+				"content": "<a target=\"_blank\" href=\"https://www.ghostery.com/about-ghostery/ghostery-terms-and-conditions/\" rel=\"noopener noreferrer\">"
+			}
+		}
+	},
+	"enhanced_anti_tracking": {
+		"message": "反跟蹤"
+	},
+	"unidentified": {
+		"message": "不明"
+	},
+	"unidentified_description": {
+		"message": "由反追蹤功能清理的不明追蹤器"
+	},
+	"ghostery_is_ready": {
+		"message": "Ghostery 已準備好了！"
+	},
+	"choose_your_privacy_plan": {
+		"message": "選擇您的隱私計畫"
+	},
+	"choose_your_ghostery_privacy_plan": {
+		"message": "選擇您的 Ghostery 隱私計畫"
+	},
+	"ghostery_basic": {
+		"message": "Basic"
+	},
+	"dollar_sign": {
+		"message": "&#36;"
+	},
+	"plus_monthly_subscription_price_number": {
+		"message": "2"
+	},
+	"per_month": {
+		"message": "每月"
+	},
+	"per_year": {
+		"message": "每年"
+	},
+	"faster_cleaner_browsing": {
+		"message": "更快、更乾淨的瀏覽體驗",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 27."
+	},
+	"blocks_ads": {
+		"message": "廣告封鎖",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 27."
+	},
+	"blocks_trackers": {
+		"message": "跟蹤器封鎖",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 27."
+	},
+	"data_protection": {
+		"message": "資料保護",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 27."
+	},
+	"select_basic": {
+		"message": "選擇 Basic"
+	},
+	"select_plus": {
+		"message": "選擇 Plus"
+	},
+	"recommended": {
+		"message": "推薦"
+	},
+	"get_ghostery_plus": {
+		"message": "獲取 Ghostery Plus"
+	},
+	"get_ghostery_plus_bang": {
+		"message": "獲取Ghostery Plus！"
+	},
+	"already_subscribed": {
+		"message": "已訂閱"
+	},
+	"new_themes": {
+		"message": "新主題"
+	},
+	"historical_blocking_stats": {
+		"message": "歷史阻擋統計數據"
+	},
+	"sign_in": {
+		"message": "登錄"
+	},
+	"sign_out": {
+		"message": "登出"
+	},
+	"create_account": {
+		"message": "創建帳戶"
+	},
+	"email_colon": {
+		"message": "電郵："
+	},
+	"confirm_email_colon": {
+		"message": "確認電郵："
+	},
+	"next": {
+		"message": "下一步"
+	},
+	"previous": {
+		"message": "上一步"
+	},
+	"done": {
+		"message": "完成"
+	},
+	"simple_view": {
+		"message": "簡單圖示"
+	},
+	"detailed_view": {
+		"message": "詳細圖示"
+	},
+	"support": {
+		"message": "支援"
+	},
+	"start": {
+		"message": "開始"
+	},
+	"password_colon": {
+		"message": "密碼"
+	},
+	"please_enter_a_valid_email": {
+		"message": "請輸入一個有效的電郵。"
+	},
+	"your_email_do_not_match": {
+		"message": "您的這些電郵不脗合。"
+	},
+	"customize_setup": {
+		"message": "定制設置"
+	},
+	"learn_more": {
+		"message": "瞭解更多"
+	},
+	"custom_themes": {
+		"message": "自訂主題"
+	},
+	"historical_stats": {
+		"message": "歷史統計數據"
+	},
+	"priority_support": {
+		"message": "優先支援",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 25."
+	},
+	"on": {
+		"message": "啟動"
+	},
+	"off": {
+		"message": "關閉"
+	},
+	"enhanced_ad_blocking": {
+		"message": "廣告封鎖"
+	},
+	"smart_blocking": {
+		"message": "智能瀏覽"
+	},
+	"smart_blocking_DESC": {
+		"message": "自動封鎖及解封網頁跟蹤器以優化網頁的效率。"
+	},
+	"ad_blocking_DESC": {
+		"message": "阻止您登訪頁面的廣告。"
+	},
+	"anti_tracking_DESC": {
+		"message": "隱暱已解封及不明網頁跟蹤器的名稱，以加強網頁瀏覽保護。"
+	},
+	"no_such_email_password_combo": {
+		"message": "看來我們找不到這個電郵與密碼的組合。 再試一次。"
+	},
+	"all_basic_features_plus_COLON": {
+		"message": "所有基本功能，外加：",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 27."
+	},
+	"historical_tracker_stats": {
+		"message": "歷史網頁跟蹤器統計",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 25."
+	},
+	"new_color_themes": {
+		"message": "新彩色主題",
+		"description": "Appears in a non-responsive modal. Character limit (including spaces and punctuation): 25."
+	},
+	"upgrade_cta_TEXT": {
+		"message": "每月只要 &#36;2 即可升級至 Ghostery Plus，您便可以解鎖歷史網頁跟蹤器資料、優先獲得支援和新色彩主題。",
+		"description": "Body text in a non-responsive modal. Character limit (including spaces and punctuation): 135."
+	},
+	"upgrade_your_ghostery_experience": {
+		"message": "升級您的 Ghostery 體驗",
+		"description": "Header text for a non-responsive modal. Character limit (including spaces and punctuation): 40."
+	},
+	"upgrade_to_plus": {
+		"message": "升級至 Plus",
+		"description": "Button text in a non-responsive modal. Character limit (including spaces and punctuation): 35."
+	},
+	"no_thanks_turn_promos_off": {
+		"message": "不用了，謝謝，停用促銷",
+		"description": "Text link in a non-responsive modal. Character limit (including spaces and punctuation): 28."
+	},
+	"already_subscribed_sign_in": {
+		"message": "已訂閱？登入",
+		"description": "Character limit (including spaces and punctuation): 28."
+	},
+	"promos_turned_off_notification": {
+		"message": "已停用促銷。如欲重新啟用，請至",
+		"description": "translation must take into account that 'Settings' is appended to this string"
+	},
+	"settings": {
+		"message": "設定"
+	},
+	"try_ghostery_midnight": {
+		"message": "試用 Ghostery Midnight"
+	},
+	"seven_day_free_trial": {
+		"message": "7 天免費試用"
+	},
+	"spring_is_here": {
+		"message": "春天到了！"
+	},
+  	"full_coverage_protection_promise": {
+	  "message": "全面防護您裝置上的所有瀏覽器和應用程式"
+	},
+	"system_wide_tracker_and_ad_blocking": {
+		"message": "全系統跟蹤器和廣告封鎖"
+	},
+	"built_in_vpn": {
+		"message": "內建 VPN"
+	},
+	"custom_whitelist_options": {
+		"message": "自訂解封名單選項"
+	},
+	"historical_tracking_insights": {
+		"message": "歷史跟蹤資訊"
+	},
+	"download_for_free": {
+		"message": "免費下載"
+	},
+	"support_ghostery_and_try_plus_instead": {
+		"message": "改為使用 Plus 來支援 Ghostery 吧"
+	},
+	"no_thanks_continue_with_basic": {
+		"message": "不用了，謝謝，繼續使用基本功能"
+	},
+	"too_many_password_resets_text": {
+		"message": "密碼重設要求次數過多。請一小時後再重試。"
+	},
+	"too_many_failed_logins_text": {
+		"message": "登入失敗次數過多，請一小時後重試。"
+	}
 }

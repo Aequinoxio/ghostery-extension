@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import Settings from '../components/Settings';
 import * as settingsActions from '../actions/SettingsActions';
-import { toggleExpanded } from '../actions/DetailActions';
+import toggleExpanded from '../actions/DetailActions';
 import { updateSitePolicy } from '../actions/SummaryActions';
 /**
  * Map redux store state properties to Settings view component own properties.
@@ -25,11 +25,11 @@ import { updateSitePolicy } from '../actions/SummaryActions';
  * @todo  We are not using ownProps, so we better not specify it explicitly,
  * in this case it won't be passed by React (see https://github.com/reactjs/react-redux/blob/master/docs/api.md).
  */
-const mapStateToProps = (state, ownProps) => Object.assign({}, state.settings, {
-	email: state.panel.email,
+const mapStateToProps = state => ({
+	...state.settings,
+	user: state.account.user,
 	is_expanded: state.panel.is_expanded,
 	language: state.panel.language,
-	logged_in: state.panel.logged_in,
 	pageHost: state.summary.pageHost,
 	pageUrl: state.summary.pageUrl,
 	reload_banner_status: state.panel.reload_banner_status,
@@ -37,7 +37,7 @@ const mapStateToProps = (state, ownProps) => Object.assign({}, state.settings, {
 	site_blacklist: state.summary.site_blacklist,
 	site_whitelist: state.summary.site_whitelist,
 	trackers_banner_status: state.panel.trackers_banner_status,
-	trackerCounts: state.summary.trackerCounts,
+	trackerCounts: state.summary.trackerCounts
 });
 /**
  * Bind Settings view component action creators using Redux's bindActionCreators
@@ -46,7 +46,7 @@ const mapStateToProps = (state, ownProps) => Object.assign({}, state.settings, {
  * @param  {Object} 	ownProps  Settings view component own props
  * @return {function}          	  to be used as an argument in redux connect call
  */
-const mapDispatchToProps = (dispatch, ownProps) => ({
+const mapDispatchToProps = dispatch => ({
 	actions: bindActionCreators(Object.assign(settingsActions, {
 		toggleExpanded,
 		updateSitePolicy,

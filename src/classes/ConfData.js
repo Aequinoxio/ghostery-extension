@@ -9,20 +9,20 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-use-before-define: 0 */
-
 import globals from './Globals';
-import { prefsGet, log } from '../utils/common';
+import { prefsGet } from '../utils/common';
 
-const IS_EDGE = (globals.BROWSER_INFO.name === 'edge');
-const { IS_CLIQZ } = globals;
+const { IS_CLIQZ, BROWSER_INFO } = globals;
+const IS_FIREFOX = (BROWSER_INFO.name === 'firefox');
+const IS_ANDROID = (BROWSER_INFO.os === 'android');
+
 /**
  * Class for handling user configuration properties synchronously.
  *
@@ -35,9 +35,8 @@ const { IS_CLIQZ } = globals;
  */
 class ConfData {
 	constructor() {
-		// paused_blocking, language and SYNC_SET do not get persisted
-		this.language = this._getDefaultLanguage();
-		this.DONT_PERSIST_SET = new Set(globals.DONT_PERSIST_ARRAY);
+		// language does not get persisted
+		this.language = ConfData._getDefaultLanguage();
 		this.SYNC_SET = new Set(globals.SYNC_ARRAY);
 	}
 
@@ -47,19 +46,20 @@ class ConfData {
 	 * This method is called once on startup.
 	 */
 	init() {
-		return prefsGet().then((data) => {
+		return prefsGet().then((d) => {
+			const data = { ...d };
 			const nowTime = Number(new Date().getTime());
+			const _setProp = (name, value) => {
+				if (!globals.INIT_COMPLETE) {
+					globals.initProps[name] = value;
+				}
+			};
 			const _initProperty = (name, value) => {
 				if (data[name] === null || typeof (data[name]) === 'undefined') {
 					data[name] = value;
 					_setProp(name, value);
 				}
 				this[name] = data[name];
-			};
-			const _setProp = (name, value) => {
-				if (!globals.INIT_COMPLETE) {
-					globals.initProps[name] = value;
-				}
 			};
 
 			// Transfer legacy previous version property to new name
@@ -77,6 +77,28 @@ class ConfData {
 				_setProp('previous_version', this.previous_version);
 			}
 
+			// Transfer legacy banner statuses which used to be objects
+			const { reload_banner_status, trackers_banner_status } = data;
+			if (reload_banner_status && typeof reload_banner_status === 'object') {
+				this.reload_banner_status = !!reload_banner_status.show;
+				_setProp('reload_banner_status', this.reload_banner_status);
+			} else {
+				_initProperty('reload_banner_status', true);
+			}
+
+			if (trackers_banner_status && typeof trackers_banner_status === 'object') {
+				this.trackers_banner_status = !!trackers_banner_status.show;
+				_setProp('trackers_banner_status', this.trackers_banner_status);
+			} else {
+				_initProperty('trackers_banner_status', true);
+			}
+
+			// Make sure that getBrowserInfo() has resolved before we set these properties
+			(async() => {
+				await globals.BROWSER_INFO_READY;
+				_initProperty('enable_metrics', BROWSER_INFO.name === 'ghostery_desktop');
+			})();
+
 			// simple props
 			_initProperty('alert_bubble_pos', 'br');
 			_initProperty('alert_bubble_timeout', 15);
@@ -84,39 +106,52 @@ class ConfData {
 			_initProperty('block_by_default', false);
 			_initProperty('bugs_last_checked', 0);
 			_initProperty('bugs_last_updated', nowTime);
+			_initProperty('cliqz_adb_mode', 0);
+			_initProperty('cliqz_legacy_opt_in', false);
+			_initProperty('cliqz_import_state', 0);
 			_initProperty('cmp_version', 0);
+			_initProperty('current_theme', 'default');
 			_initProperty('enable_ad_block', !IS_CLIQZ);
 			_initProperty('enable_anti_tracking', !IS_CLIQZ);
 			_initProperty('enable_autoupdate', true);
 			_initProperty('enable_click2play', true);
 			_initProperty('enable_click2play_social', true);
-			_initProperty('enable_human_web', !((IS_EDGE || IS_CLIQZ)));
-			_initProperty('enable_metrics', false);
-			_initProperty('enable_offers', !((IS_EDGE || IS_CLIQZ)));
+			_initProperty('enable_human_web', !IS_CLIQZ && !IS_FIREFOX);
+			_initProperty('enable_abtests', true);
 			_initProperty('enable_smart_block', true);
 			_initProperty('expand_all_trackers', true);
 			_initProperty('hide_alert_trusted', false);
+			_initProperty('hub_layout', 'not_yet_set');
 			_initProperty('ignore_first_party', true);
 			_initProperty('import_callout_dismissed', true);
+			_initProperty('insights_promo_modal_last_seen', 0);
 			_initProperty('install_random_number', 0);
 			_initProperty('install_date', 0);
 			_initProperty('is_expanded', false);
 			_initProperty('is_expert', false);
 			_initProperty('last_cmp_date', 0);
 			_initProperty('notify_library_updates', false);
+			_initProperty('notify_promotions', true);
 			_initProperty('notify_upgrade_updates', true);
+			_initProperty('paid_subscription', false);
+			_initProperty('plus_promo_modal_last_seen', 0);
+			_initProperty('premium_promo_modal_last_seen', 0);
 			_initProperty('settings_last_imported', 0);
 			_initProperty('settings_last_exported', 0);
-			_initProperty('show_alert', true);
+			_initProperty('show_alert', !IS_ANDROID);
 			_initProperty('show_badge', true);
 			_initProperty('show_cmp', true);
 			_initProperty('show_tracker_urls', true);
 			_initProperty('toggle_individual_trackers', true);
-			_initProperty('setup_step', 0);
-			_initProperty('setup_path', 0);
+			_initProperty('setup_step', 7);
+			_initProperty('setup_show_warning_override', true);
+			_initProperty('setup_number', 0);
 			_initProperty('setup_block', 1);
+			_initProperty('setup_complete', false);
+			_initProperty('tutorial_complete', false);
 
 			// Complex props
+			_initProperty('account', null);
 			_initProperty('bugs', {});
 			_initProperty('click2play', {});
 			_initProperty('cmp_data', []);
@@ -128,29 +163,13 @@ class ConfData {
 			_initProperty('site_specific_blocks', {});
 			_initProperty('site_specific_unblocks', {});
 			_initProperty('site_whitelist', []);
+			_initProperty('cliqz_module_whitelist', {});
 			_initProperty('surrogates', {});
 			_initProperty('version_history', []);
-			_initProperty('login_info', {
-				logged_in: false,
-				email: '',
-				user_token: '',
-				decoded_user_token: {},
-				is_validated: false
-			});
-			_initProperty('reload_banner_status', {
-				dismissals: [],
-				show_time: nowTime,
-				show: true
-			});
-			_initProperty('trackers_banner_status', {
-				dismissals: [],
-				show_time: nowTime,
-				show: true
-			});
 		});
 	}
 
-	_getDefaultLanguage() {
+	static _getDefaultLanguage() {
 		const SUPPORTED_LANGUAGES = {
 			de: 'Deutsch',
 			en: 'English',

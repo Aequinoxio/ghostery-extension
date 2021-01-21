@@ -6,16 +6,14 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import _ from 'underscore';
-import conf from './Conf';
-import { getTab } from '../utils/utils';
+import { isEmpty } from 'underscore';
 import foundBugs from './FoundBugs';
 /**
  * Class for handling request latency data.
@@ -40,7 +38,7 @@ class Latency {
 		}
 		// If the latencies object for this request id is empty then this is
 		// not a tracker. Safe to delete object and return.
-		if (_.isEmpty(this.latencies[request_id])) {
+		if (isEmpty(this.latencies[request_id])) {
 			delete this.latencies[request_id];
 			return 0;
 		}
@@ -53,18 +51,16 @@ class Latency {
 		}
 
 		const {
-			start_time, bug_id, page_url, incognito
+			start_time, bug_id
 		} = this.latencies[request_id][details.url];
 
 		delete this.latencies[request_id][details.url];
-		if (_.isEmpty(this.latencies[request_id])) {
+		if (isEmpty(this.latencies[request_id])) {
 			delete this.latencies[request_id];
 		}
 
-		const response_code = details.statusCode || -1;
 		const blocked = details.error === 'net::ERR_BLOCKED_BY_CLIENT' || (details.redirectUrl && !details.redirectUrl.startsWith('http'));
 		let latency = Math.round(details.timeStamp - start_time);
-		let from_cache = details.fromCache ? 1 : 0;
 
 		// check for slow tracker issue
 		const appWithLatencyId = foundBugs.checkLatencyIssue(tab_id, bug_id, latency);
@@ -73,7 +69,6 @@ class Latency {
 		// if they want, they can look at 'bl' to see if blocked by Ghostery
 		if (blocked) {
 			latency = -1;
-			from_cache = -1;
 		}
 
 		return appWithLatencyId;

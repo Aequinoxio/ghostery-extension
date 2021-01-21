@@ -1,13 +1,12 @@
 ## Build Files
 dist/
 build/
-web-ext-artifacts/
-*precompiled/
 licenses.json
 
 ## Node
 node_modules/
 npm-debug.log
+yarn-error.log
 
 ## Development Files
 *.swp
@@ -19,17 +18,24 @@ npm-debug.log
 .ltk
 tools/i18n_results
 tools/leet/*.json
+tools/token_results
 
-# Cliqz
+## Cliqz
 cliqz/
+
+## Tools
+tools/amo/*.zip
 
 ## JSDoc
 docs/
 jsdocs/
 out/
 
-#OSX
+## Jest
+coverage/
+
+## OSX
 .DS_Store
 
-#Other Files
+## Other Files
 bug-list.md

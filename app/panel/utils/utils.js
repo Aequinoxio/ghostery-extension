@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,7 +24,7 @@ import { log } from '../../../src/utils/common';
 export function updateObject(obj, key, value) {
 	const output = {};
 	output[key] = value;
-	return Object.assign({}, obj, output);
+	return { ...obj, ...output };
 }
 
 /**
@@ -35,9 +35,9 @@ export function updateObject(obj, key, value) {
  * @return {Object}     	new object
  */
 export function removeFromObject(obj, key) {
-	return Object.keys(obj).filter(k => k !== key.toString()).reduce((result, k) => {
-		result[k] = obj[k];
-		return result;
+	return Object.keys(obj).filter(k => k !== key.toString()).reduce((acc, k) => {
+		acc[k] = obj[k];
+		return acc;
 	}, {});
 }
 
@@ -64,14 +64,94 @@ export function removeFromArray(array, position) {
 }
 
 /**
+ * Calculates the time difference between two dates and returns the
+ * value in a computer interpretable way.
+ * @param  {datetime} start the beginning date-time
+ * @param  {datetime} end   the ending date-time
+ * @return {Object}         An object with:
+ *                            type: days, hours, minutes, seconds
+ *                            count: the number of days, hours, minutes, seconds
+ */
+export function computeTimeDelta(start, end) {
+	const time_delta = Math.abs(end.getTime() - start.getTime());
+
+	const day_ms = 1000 * 60 * 60 * 24;
+	const num_days = Math.round(time_delta / day_ms);
+	if (num_days >= 2) {
+		return {
+			count: num_days,
+			type: 'days',
+		};
+	}
+
+	const hour_ms = 1000 * 60 * 60;
+	const num_hours = Math.round(time_delta / hour_ms);
+	if (num_hours >= 2) {
+		return {
+			count: num_hours,
+			type: 'hours'
+		};
+	}
+
+	const min_ms = 1000 * 60;
+	const num_mins = Math.round(time_delta / min_ms);
+	if (num_mins >= 2) {
+		return {
+			count: num_mins,
+			type: 'mins'
+		};
+	}
+
+	const sec_ms = 1000;
+	const num_secs = Math.round(time_delta / sec_ms);
+	return {
+		count: num_secs,
+		type: 'secs'
+	};
+}
+
+/**
  * Check for valid email
  * @memberOf PanelUtils
  * @param  {string} email 		email to validate
  * @return {boolean}			true if valid, false otherwise
  */
 export function validateEmail(email) {
-	const emailRegex = /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/;
+	// eslint-disable-next-line no-useless-escape, no-control-regex
+	const emailRegex = /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i;
 	return email !== '' && emailRegex.test(email);
+}
+
+/**
+ * Check for valid confirm email and equality to email
+ * @memberOf PanelUtils
+ * @param  {string} email 			email to validate
+ * @param  {string} confirmEmail 	confirm email to validate
+ * @return {boolean}				true if valid, false otherwise
+ */
+export function validateConfirmEmail(email, confirmEmail) {
+	if (!email || !confirmEmail) {
+		return false;
+	}
+	const lEmail = email.toLowerCase();
+	const lConfirmEmail = confirmEmail.toLowerCase();
+	return (validateEmail(confirmEmail) && (lEmail === lConfirmEmail)) || false;
+}
+
+/**
+ * Check for confirm email equality to email
+ * @memberOf PanelUtils
+ * @param  {string} email 			email
+ * @param  {string} confirmEmail 	confirm email to validate
+ * @return {boolean}				true if equal, false otherwise
+ */
+export function validateEmailsMatch(email, confirmEmail) {
+	if (!email || !confirmEmail) {
+		return false;
+	}
+	const lEmail = email.toLowerCase();
+	const lConfirmEmail = confirmEmail.toLowerCase();
+	return lEmail === lConfirmEmail;
 }
 
 /**
@@ -98,7 +178,7 @@ export function doXHR(method, url, query) {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
 
-		xhr.onload = function () {
+		xhr.onload = function() {
 			// This is called even on 404 etc, so check the status.
 			if (xhr.status >= 200 && xhr.status < 400) {
 				resolve(JSON.parse(xhr.responseText));
@@ -110,7 +190,7 @@ export function doXHR(method, url, query) {
 		};
 
 		// Handle network errors
-		xhr.onerror = function (error) {
+		xhr.onerror = function(error) {
 			log('doXHR network error', error);
 			reject(new Error(error));
 		};
@@ -123,4 +203,48 @@ export function doXHR(method, url, query) {
 		xhr.overrideMimeType('application/json');
 		xhr.send(query);
 	});
+}
+
+/**
+ * Sets the theme
+ * @memberOf PanelUtils
+ * @param  {object} doc document object
+ * @param  {string} themeName unique name of the theme
+ * @param {string} theme css of the theme
+ */
+export function setTheme(doc, name, account) {
+	const styleTitlePrefix = 'Ghostery Theme';
+	const styleList = doc.head.getElementsByTagName('style');
+	let themeStyle = null;
+	// Get style tag for the active theme
+	// forEach loops are supported equally across browsers
+	Array.from(styleList).forEach((style) => {
+		if (style.title.startsWith(styleTitlePrefix)) {
+			themeStyle = style;
+		}
+	});
+
+	if (name !== 'default') {
+		if (!account) { return; }
+		const { themeData } = account;
+		if (!themeData) { return; }
+		const { css } = themeData[name];
+
+		// Create element for the theme being set, if it is not there
+		if (!themeStyle) {
+			themeStyle = doc.createElement('style');
+			themeStyle.id = name;
+			themeStyle.title = `${styleTitlePrefix}`;
+			themeStyle.textContent = css;
+			doc.head.appendChild(themeStyle);
+		}
+		themeStyle.textContent = css;
+	} else {
+		// if themeName is 'default' all we have to do is to remove style element
+		Array.from(styleList).forEach((style) => {
+			if (style.title.startsWith(styleTitlePrefix)) {
+				doc.head.removeChild(style);
+			}
+		});
+	}
 }

@@ -1,12 +1,12 @@
 /**
- * Site Policy Class
+ * Smart Blocking Policy Class
  *
- * Handles whitelist and blacklist functionality
+ * Handles policy for Smart Blocking
  *
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,6 +18,8 @@ import tabInfo from './TabInfo';
 import compDb from './CompatibilityDb';
 import globals from './Globals';
 import Policy from './Policy';
+import c2pDb from './Click2PlayDb';
+import { log } from '../utils/common';
 /**
  * Class for handling Smart Blocking site policy.
  * @memberOf  BackgroundClasses
@@ -25,7 +27,6 @@ import Policy from './Policy';
  */
 class PolicySmartBlock {
 	constructor() {
-		this.policy = new Policy();
 		this.allowedCategoriesList = [
 			'essential',
 			'audio_video_player',
@@ -37,82 +38,78 @@ class PolicySmartBlock {
 			'font',
 		];
 	}
+
 	/**
 	 * Determine if the tracker should be unblocked on a particular site to prevent site breaking.
 	 * @param  {string} appId       tracker id
 	 * @param  {string} catId       category id
-	 * @param  {number} 	tabId       tab id
+	 * @param  {number} tabId       tab id
 	 * @param  {string} pageURL     tab url
 	 * @param  {string} requestType type of the request
 	 * @return {boolean} 			true if one of the conditions is met, false they are not
 	 *                           	applicable to this url, or none are met.
 	 */
 	shouldUnblock(appId, catId, tabId, pageURL, requestType) {
-		if (!this.shouldCheck(tabId, appId)) { return false; }
+		if (!PolicySmartBlock.shouldCheck(tabId, appId)) { return false; }
 
-		// allow if tracker is in compatibility list
-		if (this._appHasKnownIssue(tabId, appId, pageURL)) {
-			return true;
+		let reason;
+
+		if (PolicySmartBlock._appHasKnownIssue(tabId, appId, pageURL)) {
+			reason = 'hasIssue'; 		// allow if tracker is in compatibility list
+		} else if (this._allowedCategories(tabId, appId, catId)) {
+			reason = 'allowedCategory'; // allow if tracker is in breaking category
+		} else if (this._allowedTypes(tabId, appId, requestType)) {
+			reason = 'allowedType'; 	// allow if tracker is in breaking type
+		} else if (PolicySmartBlock._pageWasReloaded(tabId, appId)) {
+			reason = 'pageReloaded'; 	// allow if page has been reloaded recently
 		}
 
-		// allow if tracker is in breaking category
-		if (this._allowedCategories(tabId, appId, catId)) {
+		if (reason) {
+			log('Smart Blocking unblocked appId', appId, 'for reason:', reason);
+			tabInfo.setTabSmartBlockAppInfo(tabId, appId, reason, false);
 			return true;
 		}
-
-		// allow if tracker is in breaking type
-		if (this._allowedTypes(tabId, appId, requestType)) {
-			return true;
-		}
-
-		// allow if page has been reloaded recently
-		if (this._pageWasReloaded(tabId, appId)) {
-			return true;
-		}
-
-		// TODO tabInfo.setTabSmartBlockAppInfo() should happen here
 
 		return false;
 	}
+
 	/**
 	 * Determine if the tracker should be blocked on a particular site to prevent site breaking.
 	 * @param  {string} appId       tracker id
 	 * @param  {string} catId       category id
-	 * @param  {number} 	tabId       tab id
+	 * @param  {number} tabId       tab id
 	 * @param  {string} pageURL     tab url
 	 * @param  {string} requestType type of the request
 	 * @return {boolean}         	true if one of the conditions is met, false they are not
 	 *                              applicable to this url, or none are met.
 	 */
 	shouldBlock(appId, catId, tabId, pageURL, requestType, requestTimestamp) {
-		if (!this.shouldCheck(tabId, appId)) { return false; }
+		if (!PolicySmartBlock.shouldCheck(tabId, appId)) { return false; }
 
-		// block if it's been more than 5 seconds since page load started
-		if (this._requestWasSlow(tabId, appId, requestTimestamp)) {
-			// allow if tracker is in compatibility list
-			if (this._appHasKnownIssue(tabId, appId, pageURL)) {
-				return true;
-			}
+		let reason;
 
-			// allow if tracker is in breaking category
-			if (this._allowedCategories(tabId, appId, catId)) {
-				return true;
-			}
+		// Block all trackers that load after 5 seconds from when page load started
+		if (PolicySmartBlock._requestWasSlow(tabId, appId, requestTimestamp)) {
+			reason = 'slow';
 
-			// allow if tracker is in breaking type
-			if (this._allowedTypes(tabId, appId, requestType)) {
-				return true;
-			}
-
-			// allow if page has been reloaded recently
-			if (this._pageWasReloaded(tabId, appId)) {
-				return true;
+			if (PolicySmartBlock._appHasKnownIssue(tabId, appId, pageURL)) {
+				reason = 'hasIssue'; 		// allow if tracker is in compatibility list
+			} else if (this._allowedCategories(tabId, appId, catId)) {
+				reason = 'allowedCategory'; // allow if tracker is in breaking category
+			} else if (this._allowedTypes(tabId, appId, requestType)) {
+				reason = 'allowedType'; 	// allow if tracker is in breaking type
+			} else if (PolicySmartBlock._pageWasReloaded(tabId, appId)) {
+				reason = 'pageReloaded'; 	// allow if page has been reloaded recently
 			}
 		}
 
-		// TODO tabInfo.setTabSmartBlockAppInfo() should happen here
+		const result = (reason === 'slow');
+		if (result) {
+			log('Smart Blocking blocked appId', appId, 'for reason:', reason);
+			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'slow', true);
+		}
 
-		return false;
+		return result;
 	}
 
 	/**
@@ -122,117 +119,101 @@ class PolicySmartBlock {
 	 * 3. Page is neither whitelisted or blacklisted
 	 * 4. Tracker is not site-specific unblocked
 	 * 5. Tracker is not site-specific blocked
+	 * 6. Tracker does not have entry in Click2Play
+	 *
+	 * @param  {number} 			tabId 	tab id
+	 * @param  {string | boolean} 	appId 	tracker id
 	 * @return {boolean}
 	 */
-	shouldCheck(tabId, appId = false) {
+	static shouldCheck(tabId, appId = false) {
 		const tabUrl = tabInfo.getTabInfo(tabId, 'url');
 		const tabHost = tabInfo.getTabInfo(tabId, 'host');
 
 		return (
 			conf.enable_smart_block &&
 			!globals.SESSION.paused_blocking &&
-			!this.policy.getSitePolicy(tabUrl) &&
+			!Policy.getSitePolicy(tabUrl) &&
 			((appId && (!conf.site_specific_unblocks.hasOwnProperty(tabHost) || !conf.site_specific_unblocks[tabHost].includes(+appId))) || appId === false) &&
-			((appId && (!conf.site_specific_blocks.hasOwnProperty(tabHost) || !conf.site_specific_blocks[tabHost].includes(+appId))) || appId === false)
+			((appId && (!conf.site_specific_blocks.hasOwnProperty(tabHost) || !conf.site_specific_blocks[tabHost].includes(+appId))) || appId === false) &&
+			(c2pDb.db.apps && !c2pDb.db.apps.hasOwnProperty(appId))
 		);
 	}
 
-	// TODO: this check will still fail when pageHost is "foo.bar.domain.com"
-	// and requestHost is "some.other.subdomain.domain.com"
 	/**
-	 * Check if request host matches page host
-	 * @param  {string} pageHost		host of the page url
-	 * @param  {string} requestHost		host of the request url
+	 * Check if request domain matches page domain
+	 * @param  {number} tabId			tab id
+	 * @param  {string} pageDomain		domain of the page
+	 * @param  {string} requestDomain	domain of the request
 	 * @return {boolean}
 	 */
-	isFirstPartyRequest(tabId, pageHost = '', requestHost = '') {
-		if (!this.shouldCheck(tabId)) { return false; }
+	static isFirstPartyRequest(tabId, pageDomain = '', requestDomain = '') {
+		if (!PolicySmartBlock.shouldCheck(tabId)) { return false; }
 
-		const min = Math.min(requestHost.length, pageHost.length);
-		let matches = true;
-		let i = 0;
-		while (i < min && matches) {
-			matches = requestHost.charAt(requestHost.length - i + 1) === pageHost.charAt(pageHost.length - i + 1);
-			i++;
-		}
-
-		if (matches) {
-			// tabInfo.setTabSmartBlockInfo(tabId, 'firstParty');
-		}
-
-		return matches;
+		return pageDomain === requestDomain;
 	}
 
 	/**
-	 * Check if tab was reloaded
-	 * @param  {string} tabId		tab id
+	 * Check if tab was reloaded.
+	 * @param  {number} tabId		tab id
 	 * @return {boolean}
 	 */
-	_pageWasReloaded(tabId, appId) {
-		const checks = tabInfo.getTabInfo(tabId, 'reloaded') || false;
-		if (checks) {
-			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'pageReloaded', false);
-		}
-
-		return checks;
+	static _pageWasReloaded(tabId) {
+		return tabInfo.getTabInfo(tabId, 'reloaded') || false;
 	}
 
 	/**
-	 * Check if app has a known issue with a URL
-	 * @param  {string} appId		tracker id
-	 * @param  {string} pageURL		tab url
-	 * @return {boolean}
+	 * Check if app has a known issue with a URL.
+	 * @param 	{number} tabId 		tab id
+	 * @param  	{string} appId		tracker id
+	 * @param  	{string} pageURL	tab url
+	 * @return 	{boolean}
 	 */
-	_appHasKnownIssue(tabId, appId, pageURL) {
-		const checks = compDb.hasIssue(appId, pageURL);
-		if (checks) {
-			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'hasIssue', false);
-		}
-
-		return checks;
+	static _appHasKnownIssue(tabId, appId, pageURL) {
+		return compDb.hasIssue(appId, pageURL);
 	}
 
 	/**
 	 * Check if HTTP or WS (insecure web socket) request is loading on a HTTPS page
-	 * @param  {string} pageProtocol		protocol of the tab url
-	 * @param  {string} requestProtocol		protocol of the request url
-	 * @return {boolean}
+	 * @param 	{number} tabId 				tab id
+	 * @param  	{string} pageProtocol		protocol of the tab url
+	 * @param  	{string} requestProtocol	protocol of the request url
+	 * @param 	{string} requestHost 		host of the request url
+	 * @return 	{boolean}
 	 */
-	isInsecureRequest(tabId, pageProtocol, requestProtocol) {
-		if (!this.shouldCheck(tabId)) { return false; }
+	static isInsecureRequest(tabId, pageProtocol, requestProtocol, requestHost) {
+		if (!PolicySmartBlock.shouldCheck(tabId)) { return false; }
 
-		const checks = (
-			pageProtocol === 'https' &&
-			(requestProtocol === 'http' || requestProtocol === 'ws') || false
-		);
-		if (checks) {
-			// tabInfo.setTabSmartBlockInfo(tabId, 'isInsecure');
+		// don't block mixed content from localhost
+		if (requestHost === 'localhost' || requestHost === '127.0.0.1' || requestHost === '[::1]') {
+			return false;
 		}
 
-		return checks;
+		return (
+			pageProtocol === 'https' &&
+			((requestProtocol === 'http' || requestProtocol === 'ws') || false)
+		);
 	}
 
 	/**
 	 * Check if given category is in the list of whitelisted categories
-	 * @param  {string} catId  		category id
+	 * @param 	{number} 	tabId 		tab id
+	 * @param  	{string} 	appId		tracker id
+	 * @param  	{string} 	catId  		category id
 	 * @return {boolean}
 	 */
 	_allowedCategories(tabId, appId, catId) {
-		const checks = this.allowedCategoriesList.includes(catId);
-		if (checks) {
-			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'allowedCategory', false);
-		}
-
-		return checks;
+		return this.allowedCategoriesList.includes(catId);
 	}
 
+	/**
+	 * Check if given request type is in the list of whitelisted requests
+	 * @param 	{number} 	tabId 				tab id
+	 * @param  	{string} 	appId				tracker id
+	 * @param  	{string} 	requestType  		request type
+	 * @return {boolean}
+	 */
 	_allowedTypes(tabId, appId, requestType) {
-		const checks = this.allowedTypesList.includes(requestType);
-		if (checks) {
-			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'allowedType', false);
-		}
-
-		return checks;
+		return this.allowedTypesList.includes(requestType);
 	}
 
 	/**
@@ -240,32 +221,29 @@ class PolicySmartBlock {
 	 * @param  {string} tabId		tab id
 	 * @return {boolean}
 	 */
-	checkReloadThreshold(tabId) {
-		if (!this.shouldCheck(tabId)) { return false; }
+	static checkReloadThreshold(tabId) {
+		if (!PolicySmartBlock.shouldCheck(tabId)) { return false; }
 
-		const THRESHHOLD = 30000; // 30 seconds
+		const SMART_BLOCK_BEHAVIOR_THRESHOLD = 30000; // 30 seconds
 
 		return (
 			tabInfo.getTabInfoPersist(tabId, 'numOfReloads') > 1 &&
-			((Date.now() - tabInfo.getTabInfoPersist(tabId, 'firstLoadTimestamp')) < THRESHHOLD) || false
+			(((Date.now() - tabInfo.getTabInfoPersist(tabId, 'firstLoadTimestamp')) < SMART_BLOCK_BEHAVIOR_THRESHOLD) || false)
 		);
 	}
 
 	/**
-	 * Check if request loaded after a threshhold time since page load
-	 * @param  {string} tabId			tab id
-	 * @param  {number} requestTimestamp   timestamp of the request
-	 * @return {boolean}
+	 * Check if request loaded after a threshold time since page load.
+	 * @param  	{string}	tabId				tab id
+	 * @param  	{string} 	appId				tracker id
+	 * @param  	{number} 	requestTimestamp   	timestamp of the request
+	 * @return 	{boolean}
 	 */
-	_requestWasSlow(tabId, appId, requestTimestamp) {
+	static _requestWasSlow(tabId, appId, requestTimestamp) {
 		const THRESHHOLD = 5000; // 5 seconds
 		const pageTimestamp = tabInfo.getTabInfo(tabId, 'timestamp');
-		const checks = (requestTimestamp - pageTimestamp > THRESHHOLD) || false;
-		if (checks) {
-			tabInfo.setTabSmartBlockAppInfo(tabId, appId, 'slow', true);
-		}
-
-		return checks;
+		// TODO: account for lazy-load or widgets triggered by user interaction beyond 5sec
+		return (requestTimestamp - pageTimestamp > THRESHHOLD) || false;
 	}
 }
 

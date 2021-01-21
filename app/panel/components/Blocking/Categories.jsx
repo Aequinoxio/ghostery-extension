@@ -4,15 +4,16 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
+import React from 'react';
 import Category from './Category';
+
 /**
  * @class Implement Categories component, which represents a
  * container of available categories. This component is shared
@@ -21,31 +22,97 @@ import Category from './Category';
  */
 class Categories extends React.Component {
 	componentDidMount() {}
+
 	/**
 	* Render a list of categories. Pass globalBlocking flag to all categories
 	* in the list, so that they would know which view they are part of.
 	* @return {ReactComponent}   ReactComponent instance
 	*/
 	render() {
-		const { categories } = this.props;
-		const globalBlocking = !!this.props.globalBlocking;
-		const filtered = !!this.props.filtered;
-		const categoryList = categories.map((cat, index) => (
-			<Category
-				globalBlocking={globalBlocking}
-				index={index}
-				category={cat}
-				actions={this.props.actions}
-				key={cat.id}
-				filtered={filtered}
-				showToast={this.props.showToast}
-				show_tracker_urls={this.props.show_tracker_urls}
-				sitePolicy={this.props.sitePolicy}
-				paused_blocking={this.props.paused_blocking}
-				language={this.props.language}
-			/>
-		));
-		return <div className="scroll-content">{ categoryList }</div>;
+		const {
+			actions,
+			categories,
+			expandAll,
+			unidentifiedCategory,
+			enable_anti_tracking,
+			sitePolicy,
+			globalBlocking,
+			filtered,
+			showToast,
+			show_tracker_urls,
+			paused_blocking,
+			language,
+			smartBlockActive,
+			smartBlock,
+		} = this.props;
+		const globalBlockingBool = !!globalBlocking;
+		const filteredBool = !!filtered;
+
+		const renderCategory = (category, index, isUnidentified) => {
+			let whitelistedTotal = 0;
+			const unidentifiedCategoryMapping = isUnidentified ? (
+				{
+					id: 'unidentified',
+					name: t('unidentified'),
+					description: t('unidentified_description'),
+					img_name: 'unidentified',
+					num_total: unidentifiedCategory.unidentifiedTrackers.length,
+					num_blocked: unidentifiedCategory.unidentifiedTrackerCount,
+					num_shown: unidentifiedCategory.hide ? 0 : unidentifiedCategory.unidentifiedTrackers.length,
+					trackers: unidentifiedCategory.unidentifiedTrackers.map((unidentifiedTracker) => {
+						if (unidentifiedTracker.whitelisted) { whitelistedTotal++; }
+						return {
+							name: unidentifiedTracker.name,
+							domains: unidentifiedTracker.domains,
+							whitelisted: unidentifiedTracker.whitelisted,
+							type: unidentifiedTracker.type,
+							siteRestricted: sitePolicy === 1,
+							blocked: false,
+							catId: 'unidentified',
+							description: '',
+							id: unidentifiedTracker.name + unidentifiedTracker.domains[0],
+							shouldShow: true,
+							cliqzAdCount: unidentifiedTracker.ads,
+							cliqzCookieCount: unidentifiedTracker.cookies,
+							cliqzFingerprintCount: unidentifiedTracker.fingerprints,
+						};
+					}),
+					whitelistedTotal,
+				}
+			) : null;
+
+			return (
+				<Category
+					expandAll={expandAll}
+					globalBlocking={globalBlockingBool}
+					index={index}
+					category={isUnidentified ? unidentifiedCategoryMapping : category}
+					actions={actions}
+					key={isUnidentified ? unidentifiedCategoryMapping.id : category.id}
+					filtered={filteredBool}
+					showToast={showToast}
+					show_tracker_urls={show_tracker_urls}
+					sitePolicy={sitePolicy}
+					paused_blocking={paused_blocking}
+					language={language}
+					smartBlockActive={smartBlockActive}
+					smartBlock={smartBlock}
+					enable_anti_tracking={enable_anti_tracking}
+					isUnidentified={isUnidentified}
+				/>
+			);
+		};
+
+		const categoryList = categories.map((category, index) => renderCategory(category, index));
+		const renderUnidentifiedCategory = unidentifiedCategory && unidentifiedCategory.unidentifiedTrackers.length
+			? renderCategory(null, categoryList.length, true) : null;
+
+		return (
+			<div className="scroll-content">
+				{categoryList}
+				{renderUnidentifiedCategory}
+			</div>
+		);
 	}
 }
 

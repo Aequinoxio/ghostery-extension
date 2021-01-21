@@ -4,8 +4,8 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
- * 
+ * Copyright 2020 Ghostery, Inc. All rights reserved.
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
@@ -58,7 +58,6 @@
 				text-align: left;
 			}
 		}
-		
 		.s-tab-title {
 			font-weight: 400;
 			font-size: 18px;
@@ -71,6 +70,10 @@
 		.s-tooltip-down {
 			@extend %s-tooltip;
 			@extend %g-tooltip-down-left;
+		}
+		.s-tooltip-down-right {
+			@extend %s-tooltip;
+			@extend %g-tooltip-down-right;
 		}
 		 .s-tooltip-down-click-to-play-img {
 			@extend .s-tooltip-down;
@@ -171,6 +174,11 @@
 			margin-top: 0;
 			margin-bottom: 11px;
 			text-transform: uppercase;
+			&.s-special {
+				display: inline-block;
+				margin-right: 8px;
+				max-width: 240px;
+			}
 		}
 		h5 {
 			display: inline-block;
@@ -186,12 +194,11 @@
 			line-height: 1.4;
 		}
 		img.s-question {
-			top: -5px;
-			width: 14px;
+			width: 16px;
 			height: auto;
 			cursor: default;
-			vertical-align: top;
 			opacity: 1.0;
+			margin: -6px 0 0 10px;
 		}
 		.s-option-group {
 			margin-bottom: 12px;
@@ -230,6 +237,8 @@
 							margin-right: 15px;
 							left: -20px;
 							top: 1px;
+							height: 12px;
+							width: 12px;
 						}
 					}
 					&:checked {
@@ -270,7 +279,7 @@
 				border-color: #CCCCCC;
 				background-size: 8px 5px;
 				-moz-appearance: none;
-				-webkit-appearance:none;				
+				-webkit-appearance: none;
 			}
 		}
 		#select-file {

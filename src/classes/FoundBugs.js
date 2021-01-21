@@ -1,96 +1,108 @@
 /**
  * FoundBugs Class
  *
- * this._foundBugs = {
- * 		tab_id: {
- * 			bug_id: {
- * 				blocked: boolean,
- * 				hasInsecureIssue: boolean,
- * 				hasLatencyIssue: boolean,
- * 			 	sources: [{
- * 					src: string,
- * 					blocked: boolean,
- * 					type: string
- * 				}]
- * 			}
- * 		}
- * }
- *
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-continue: 0 */
-/* eslint no-param-reassign: 0 */
-
 import bugDb from './BugDb';
 import compDb from './CompatibilityDb';
-import globals from './Globals';
 import tabInfo from './TabInfo';
 
-const { BROWSER_INFO } = globals;
-const LATENCY_ISSUE_THRESHOLD = (BROWSER_INFO.name === 'firefox') ? 2000 : 1000; // Temporary: bump up the latency threshold for FF only
+const LATENCY_ISSUE_THRESHOLD = 1000;
+
 /**
  * Class for handling detected trackers.
  * @memberOf  BackgroundClasses
  */
 class FoundBugs {
+	/**
+	 * this._foundBugs = {
+	 *		tab_id: {
+	 *			bug_id: {
+	 *				blocked: boolean,
+	 *				hasInsecureIssue: boolean,
+	 *				hasLatencyIssue: boolean,
+	 *				sources: [{
+	 *					src: string,
+	 *					blocked: boolean,
+	 *					type: string,
+	 *					request_id: string
+	 *				}]
+	 *			}
+	 *		}
+	 * }
+	 * this._foundApps = {
+	 *		tab_id: {
+	 *			apps: [{
+	 *				blocked: boolean,
+	 *				cat: string,
+	 *				hasCompatibilityIssue: boolean,
+	 *				hasInsecureIssue: boolean,
+	 *				hasLatencyIssue: boolean,
+	 *				id: number,
+	 *				name: string,
+	 *				sources: [{
+	 *					src: string,
+	 *					blocked: boolean,
+	 *					type: string,
+	 *					request_id: string
+	 *				}]
+	 *			}],
+	 *			appsMetadata: {
+	 *				appId: {
+	 *					needsCompatibilityCheck: boolean, // so we don't have to invoke fuzzyUrlMatcher more than once per app per tab
+	 *					sortingName: string, // so we don't have to lowerCase each app name each time we want to sort the apps array in getApps
+	 *				}
+	 *			},
+	 *			appsById: {
+	 *				appId: number // the index position of the appID in _foundApps[tab_id][apps] and _foundApps[tab_id][appsMetadata]
+	 *			},
+	 *			issueCounts : {
+	 *				compatibility: number,
+	 *				insecure: number,
+	 *				latency: number,
+	 *				blocked: number
+	 *			}
+	 *		}
+	 * }
+	 */
 	constructor() {
 		this._foundBugs = {};
+		this._foundApps = {};
 	}
 
 	/**
-	 * Update this._foundBugs property with bug data for a tab_id
+	 * Update this._foundBugs and this._foundApps properties with bug data for a tab_id
 	 *
 	 * Note: When called with just the tab_id parameter
 	 * (from tabs.onReplaced and webNavigation.onNavigation), this method
-	 * is used only to initialize this._foundBugs for the tab_id
+	 * is used only to initialize this._foundBugs and this._foundApps for the tab_id
 	 *
-	 * @param  {number} 	tab_id      tab id
-	 * @param  {number} 	bug_id      bug id
-	 * @param  {string} src			resource url
+	 * @param  {number} 	tab_id		tab id
+	 * @param  {number} 	bug_id 		bug id
+	 * @param  {string} 	src			resource url
 	 * @param  {boolean} 	blocked 	blocking status of the tracker id from this tab_id
-	 * @param  {string} type 		request resource type
+	 * @param  {string} 	type 		request resource type
+	 * @param  {string} 	request_id 	request_id for the resource to use as a unique id
 	 */
-	update(tab_id, bug_id, src, blocked, type) {
-		if (!this._foundBugs.hasOwnProperty(tab_id)) {
-			this._foundBugs[tab_id] = {};
+	update(tab_id, bug_id, src, blocked, type, request_id) {
+		if (!this._init(tab_id)) {
+			return;
 		}
 
 		if (!bug_id) {
 			return;
 		}
 
-		if (!this._foundBugs[tab_id].hasOwnProperty(bug_id)) {
-			this._foundBugs[tab_id][bug_id] = {
-				sources: [],
-				hasLatencyIssue: false,
-				hasInsecureIssue: false
-			};
-		}
-		this._foundBugs[tab_id][bug_id].sources.push({
-			src,
-			blocked,
-			type: type.toLowerCase()
-		});
-
-		// TODO speed this up?
-		// Check for insecure tag loading in secure page
-		if (!this._foundBugs[tab_id][bug_id].hasInsecureIssue) {
-			const tab = tabInfo.getTabInfo(tab_id);
-			this._foundBugs[tab_id][bug_id].hasInsecureIssue = (tab.protocol === 'https' && !src.startsWith('https'));
-		}
-
-		// once unblocked, unblocked henceforth
-		if (this._foundBugs[tab_id][bug_id].blocked !== false) {
-			this._foundBugs[tab_id][bug_id].blocked = blocked;
-		}
+		this._updateFoundBugs(tab_id, bug_id, src, blocked, type, request_id);
+		this._updateFoundApps(tab_id, bug_id);
 	}
 
 	/**
@@ -99,92 +111,69 @@ class FoundBugs {
 	 * @return {Object}
 	 */
 	getBugs(tab_id) {
-		return this._foundBugs.hasOwnProperty(tab_id) && this._foundBugs[tab_id];
+		if (!this._init(tab_id)) {
+			return {};
+		}
+
+		return this._foundBugs[tab_id];
 	}
 
 	/**
-	 * Get the trackers from BugsDb that match bugs found
-	 * on a tab_id.
+	 * If app_id is omitted, return all the trackers we have found on this tab_id
+	 * If app_id is provided, return this tracker if we have found it on this tab_id, or the empty array
 	 *
-	 * @param  {number}  		tab_id		tab id
-	 * @param  {boolean}	[sorted]  	do we want the output tracker objects array to be sorted by tracker name?
-	 * @param  {string} 	[tab_url] 	tab url
-	 * @param  {number}		[app_id] 	tracker id
-	 * @return {array}  				array of tracker objects
+	 * @param  {number}		tab_id		tab id
+	 * @param  {boolean}	sorted		do we want the output tracker objects array to be sorted by tracker name?
+	 * @param  {string}		tab_url		tab url
+	 * @param  {number}		app_id		tracker id, if we are looking for a specific one
+	 * @return {array}					array of tracker object(s)
 	 */
 	getApps(tab_id, sorted, tab_url, app_id) {
+		if (!this._init(tab_id)) {
+			return [];
+		}
+
+		if (tab_url) {
+			this._checkForCompatibilityIssues(tab_id, tab_url);
+		}
+
+		const { apps, appsMetadata } = this._foundApps[tab_id];
 		const apps_arr = [];
-		const apps_obj = {};
-		const bugs = this.getBugs(tab_id);
-		const { db } = bugDb;
 
-		let id;
-		let aid;
-		let latencyIssue = false;
-		let insecureIssue = false;
-
-		if (!bugs) {
-			return bugs;
-		}
-
-		// squish all the bugs into apps first
-		for (id in bugs) {
-			if (!bugs.hasOwnProperty(id)) {
-				continue;
+		if (app_id) {
+			const { appsById } = this._foundApps[tab_id];
+			if (appsById.hasOwnProperty(app_id)) {
+				apps_arr.push(apps[appsById[app_id]]);
 			}
-
-			aid = db.bugs[id].aid; // eslint-disable-line prefer-destructuring
-			if (app_id !== undefined && aid !== app_id) {
-				continue;
+		} else {
+			apps_arr.push(...apps);
+			if (sorted) {
+				apps_arr.sort((a, b) => {
+					const aName = appsMetadata[a.id].sortingName;
+					const bName = appsMetadata[b.id].sortingName;
+					return (aName > bName ? 1 : (aName < bName ? -1 : 0));
+				});
 			}
-			latencyIssue = bugs[id].hasLatencyIssue;
-			insecureIssue = bugs[id].hasInsecureIssue;
-			if (apps_obj.hasOwnProperty(aid)) {
-				// combine bug sources
-				apps_obj[aid].sources = apps_obj[aid].sources.concat(bugs[id].sources);
-
-				if (latencyIssue) {
-					apps_obj[aid].hasLatencyIssue = latencyIssue;
-				}
-
-				if (insecureIssue) {
-					apps_obj[aid].hasInsecureIssue = insecureIssue;
-				}
-
-				// once unblocked, unblocked henceforth
-				if (apps_obj[aid].blocked !== false) {
-					apps_obj[aid].blocked = bugs[id].blocked;
-				}
-			} else {
-				apps_obj[aid] = {
-					id: aid,
-					name: db.apps[aid].name,
-					cat: db.apps[aid].cat,
-					blocked: bugs[id].blocked,
-					sources: bugs[id].sources,
-					hasCompatibilityIssue: (tab_url && bugs[id].blocked ? compDb.hasIssue(aid, tab_url) : false),
-					hasLatencyIssue: latencyIssue,
-					hasInsecureIssue: insecureIssue
-				};
-			}
-		}
-
-		// convert apps hash to array
-		for (id in apps_obj) {
-			if (apps_obj.hasOwnProperty(id)) {
-				apps_arr.push(apps_obj[id]);
-			}
-		}
-
-		if (sorted && app_id === undefined) {
-			apps_arr.sort((a, b) => {
-				a = a.name.toLowerCase();
-				b = b.name.toLowerCase();
-				return (a > b ? 1 : (a < b ? -1 : 0));
-			});
 		}
 
 		return apps_arr;
+	}
+
+	/**
+	 * Returns an object where the keys are the ids of the apps found on this tab
+	 * and the values are their indexes in the array returned by this.getApps
+	 *
+	 * @param  {number}		tab_id		tab id
+	 * @return {Object}					object of appId:index mappings
+	 */
+	getAppsById(tab_id) {
+		if (!this._init(tab_id)) {
+			return [];
+		}
+
+		const { appsById } = this._foundApps[tab_id];
+
+		return appsById;
 	}
 
 	/**
@@ -192,56 +181,52 @@ class FoundBugs {
 	 * on a tab_id.
 	 *
 	 * @param  {number}  	tab_id		tab id
-	 * @param  {boolean}	[sorted]  	do we want the output category objects array to be sorted by category name?
-	 * @return {array}        		array of categories
+	 * @param  {boolean}	sorted  	do we want the output category objects array to be sorted by category name?
+	 * @return {array}					array of categories
 	 */
 	getCategories(tab_id, sorted) {
+		if (!this._init(tab_id)) {
+			return [];
+		}
+
 		const cats_arr = [];
 		const cats_obj = {};
 		const bugs = this.getBugs(tab_id);
 		const { db } = bugDb;
-
-		let id;
-		let aid;
-		let cid;
 
 		if (!bugs) {
 			return bugs;
 		}
 
 		// squish all the bugs into categories first
-		for (id in bugs) {
-			if (!bugs.hasOwnProperty(id)) {
-				continue;
-			}
-			aid = db.bugs[id].aid; // eslint-disable-line prefer-destructuring
-			cid = db.apps[aid].cat;
+		const ids = Object.keys(bugs);
+		ids.forEach((id) => {
+			const appid = db.bugs[id].aid;
+			const cid = db.apps[appid].cat;
 
 			if (cats_obj.hasOwnProperty(cid)) {
-				if (cats_obj[cid].appIds.includes(aid)) {
-					continue;
+				if (!cats_obj[cid].appIds.includes(appid)) {
+					cats_obj[cid].appIds.push(appid);
+					cats_obj[cid].trackers.push({
+						id: appid,
+						name: db.apps[appid].name,
+						blocked: bugs[id].blocked
+					});
+					if (bugs[id].blocked) {
+						cats_obj[cid].blocked++;
+					} else {
+						cats_obj[cid].allowed++;
+					}
+					cats_obj[cid].total++;
 				}
-
-				cats_obj[cid].appIds.push(aid);
-				cats_obj[cid].trackers.push({
-					id: aid,
-					name: db.apps[aid].name,
-					blocked: bugs[id].blocked
-				});
-				if (bugs[id].blocked) {
-					cats_obj[cid].blocked++;
-				} else {
-					cats_obj[cid].allowed++;
-				}
-				cats_obj[cid].total++;
 			} else {
 				cats_obj[cid] = {
 					id: cid,
 					name: cid,
-					appIds: [aid],
+					appIds: [appid],
 					trackers: [{
-						id: aid,
-						name: db.apps[aid].name,
+						id: appid,
+						name: db.apps[appid].name,
 						blocked: bugs[id].blocked
 					}],
 					blocked: (bugs[id].blocked ? 1 : 0),
@@ -249,20 +234,19 @@ class FoundBugs {
 					total: 1
 				};
 			}
-		}
+		});
 
 		// convert categories hash to array
-		for (cid in cats_obj) {
-			if (cats_obj.hasOwnProperty(cid)) {
-				cats_arr.push(cats_obj[cid]);
-			}
-		}
+		const cids = Object.keys(cats_obj);
+		cids.forEach((cid) => {
+			cats_arr.push(cats_obj[cid]);
+		});
 
 		if (sorted) {
 			cats_arr.sort((a, b) => {
-				a = a.name.toLowerCase();
-				b = b.name.toLowerCase();
-				return (a > b ? 1 : (a < b ? -1 : 0));
+				const a1 = a.name.toLowerCase();
+				const b1 = b.name.toLowerCase();
+				return (a1 > b1 ? 1 : (a1 < b1 ? -1 : 0));
 			});
 		}
 
@@ -272,14 +256,14 @@ class FoundBugs {
 	/**
 	 * Get the total number of trackers on a tab_id.
 	 * @param  {number} tab_id		tab id
-	 * @return {number}			count of trackers
+	 * @return {number}				count of trackers
 	 */
 	getAppsCount(tab_id) {
-		const apps = this.getApps(tab_id);
-		if (apps) {
-			return apps.length;
+		if (!this._init(tab_id)) {
+			return 0;
 		}
-		return 0;
+
+		return this._foundApps[tab_id].apps.length;
 	}
 
 	/**
@@ -287,34 +271,25 @@ class FoundBugs {
 	 * tab_id
 	 *
 	 * @param  {number} 	tab_id		tab id
-	 * @param  {string} tab_url		tab url
-	 * @return {Object}				counts for different types of issues
+	 * @param  {string} 	tab_url		tab url
+	 * @return {Object}					counts for different types of issues
 	 */
 	getAppsCountByIssues(tab_id, tab_url) {
-		const apps = this.getApps(tab_id, false, tab_url);
-		let compatibility = 0;
-		let insecure = 0;
-		let latency = 0;
-		let total = 0;
-		let all = 0;
-
-		if (apps) {
-			apps.forEach((app) => {
-				if (app.hasCompatibilityIssue || app.hasInsecureIssue || app.hasLatencyIssue) {
-					total++;
-				}
-				if (app.hasCompatibilityIssue) {
-					compatibility++;
-				}
-				if (app.hasInsecureIssue) {
-					insecure++;
-				}
-				if (app.hasLatencyIssue) {
-					latency++;
-				}
-				all++;
-			});
+		if (!this._init(tab_id)) {
+			return {
+				compatibility: 0,
+				insecure: 0,
+				latency: 0,
+				total: 0,
+				all: 0
+			};
 		}
+
+		if (tab_url) { this._checkForCompatibilityIssues(tab_id, tab_url); }
+
+		const { compatibility, insecure, latency } = this._foundApps[tab_id].issueCounts;
+		const total = compatibility + insecure + latency;
+		const all = this._foundApps[tab_id].apps.length;
 
 		return {
 			compatibility,
@@ -332,19 +307,15 @@ class FoundBugs {
 	 * @return {Object}        	counts for blocked and allowed trackers
 	 */
 	getAppsCountByBlocked(tab_id) {
-		const apps = this.getApps(tab_id);
-		let blocked = 0;
-		let allowed = 0;
-
-		if (apps) {
-			apps.forEach((app) => {
-				if (app.blocked) {
-					blocked++;
-				} else {
-					allowed++;
-				}
-			});
+		if (!this._init(tab_id)) {
+			return {
+				blocked: 0,
+				allowed: 0
+			};
 		}
+
+		const { blocked } = this._foundApps[tab_id].issueCounts;
+		const allowed = this._foundApps[tab_id].apps.length - blocked;
 
 		return {
 			blocked,
@@ -358,10 +329,14 @@ class FoundBugs {
 	 *
 	 * @param  {number} tab_id		tab id
 	 * @param  {number} bug_id		bug id
-	 * @param  {number} latency    bug latency
+	 * @param  {number} latency 	bug latency
 	 * @return {number} 			tracker id of a slow bug or 0
 	 */
 	checkLatencyIssue(tab_id, bug_id, latency) {
+		if (!this._init(tab_id)) {
+			return 0;
+		}
+
 		if (!latency) {
 			return 0;
 		}
@@ -370,7 +345,7 @@ class FoundBugs {
 			return 0;
 		}
 
-		if (!this._foundBugs.hasOwnProperty(tab_id) || !this._foundBugs[tab_id][bug_id]) {
+		if (!this._foundBugs[tab_id][bug_id]) {
 			return 0;
 		}
 
@@ -379,15 +354,172 @@ class FoundBugs {
 		}
 
 		this._foundBugs[tab_id][bug_id].hasLatencyIssue = true;
-		return bugDb.db.bugs[bug_id].aid;
+		const { aid } = bugDb.db.bugs[bug_id];
+
+		const { apps, appsById, issueCounts } = this._foundApps[tab_id];
+		if (appsById.hasOwnProperty(aid)) {
+			const app = apps[appsById[aid]];
+			if (!app.hasLatencyIssue) {
+				issueCounts.latency++;
+			}
+			app.hasLatencyIssue = true;
+		}
+
+		return aid;
 	}
 
 	/**
-	 * Clear this._foundBugs for a tab_id
+	 * Clear this._foundBugs and this._foundApps for a tab_id
 	 * @param  {number} tab_id		tab id
 	 */
 	clear(tab_id) {
 		delete this._foundBugs[tab_id];
+		delete this._foundApps[tab_id];
+	}
+
+	/**
+	 * Initialize data structures for _foundBugs[tab_id] and _foundApps[tab_id]
+	 * @private
+	 * @param  {number} tab_id
+	 * @return {boolean}
+	 */
+	_init(tab_id) {
+		if (!tab_id) {
+			return false;
+		}
+
+		if (!this._foundBugs.hasOwnProperty(tab_id)) {
+			this._foundBugs[tab_id] = {};
+		}
+
+		if (!this._foundApps.hasOwnProperty(tab_id)) {
+			this._foundApps[tab_id] = {
+				apps: [],
+				appsMetadata: {},
+				appsById: {},
+				issueCounts: {
+					compatibility: 0,
+					insecure: 0,
+					latency: 0,
+					blocked: 0
+				}
+			};
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check to see if the app is on the Compatibility list
+	 * @private
+	 * @param  {number} tab_id
+	 * @param  {string} tab_url
+	 */
+	_checkForCompatibilityIssues(tab_id, tab_url) {
+		const { apps, appsMetadata, issueCounts } = this._foundApps[tab_id];
+		apps.forEach((appEntry) => {
+			const { id } = appEntry;
+			if (appsMetadata[id].needsCompatibilityCheck) {
+				appEntry.hasCompatibilityIssue = appEntry.blocked ? compDb.hasIssue(id, tab_url) : false;
+				if (appEntry.hasCompatibilityIssue) { issueCounts.compatibility++; }
+				appsMetadata[id].needsCompatibilityCheck = false;
+			}
+		});
+	}
+
+	/**
+	 * Update _foundBugs[tab_id][bug_id] with the latest bug source data
+	 * @private
+	 * @param  {number} 	tab_id
+	 * @param  {number} 	bug_id
+	 * @param  {string} 	src     source urls for the bug
+	 * @param  {boolean} 	blocked
+	 * @param  {string} 	type
+	 * @param  {string} 	request_id 	request_id for the resource to use as a unique id
+	 */
+	_updateFoundBugs(tab_id, bug_id, src, blocked, type, request_id) {
+		if (!this._foundBugs[tab_id].hasOwnProperty(bug_id)) {
+			this._foundBugs[tab_id][bug_id] = {
+				sources: [],
+				hasLatencyIssue: false,
+				hasInsecureIssue: false,
+				blocked: true
+			};
+		}
+
+		const bug = this._foundBugs[tab_id][bug_id];
+		bug.sources.push({
+			src,
+			blocked,
+			type: type.toLowerCase(),
+			request_id
+		});
+
+		// Check for insecure tag loading in secure page
+		if (!bug.hasInsecureIssue && !src.startsWith('https')) {
+			const tab = tabInfo.getTabInfo(tab_id);
+			bug.hasInsecureIssue = (tab.protocol === 'https');
+		}
+
+		// once unblocked, unblocked henceforth
+		bug.blocked = bug.blocked && blocked;
+	}
+
+	/**
+	 * Update _foundApps[tab_id][bug_id] with the latest bug information
+	 * @private
+	 * @param  {number} tab_id
+	 * @param  {number} bug_id
+	 */
+	_updateFoundApps(tab_id, bug_id) {
+		const { db } = bugDb;
+		const { aid } = db.bugs[bug_id];
+		const {
+			hasLatencyIssue, hasInsecureIssue, blocked, sources
+		} = this._foundBugs[tab_id][bug_id];
+		const {
+			apps, appsMetadata, appsById, issueCounts
+		} = this._foundApps[tab_id];
+
+		if (appsById.hasOwnProperty(aid)) {
+			const app = apps[appsById[aid]];
+
+			if (!app.hasLatencyIssue && hasLatencyIssue) { issueCounts.latency++; }
+			if (!app.hasInsecureIssue && hasInsecureIssue) { issueCounts.insecure++; }
+			if (app.blocked && !blocked) { issueCounts.blocked--; }
+
+			app.sources = sources;
+			app.hasLatencyIssue = app.hasLatencyIssue || hasLatencyIssue;
+			app.hasInsecureIssue = app.hasInsecureIssue || hasInsecureIssue;
+			app.blocked = app.blocked && blocked;
+
+			appsMetadata[aid].needsCompatibilityCheck =
+				appsMetadata[aid].needsCompatibilityCheck && app.blocked;
+		} else {
+			const { name, cat } = db.apps[aid];
+
+			const apps_len = apps.push({
+				id: aid,
+				name,
+				cat,
+				blocked,
+				sources,
+				hasCompatibilityIssue: false,
+				hasLatencyIssue,
+				hasInsecureIssue
+			});
+
+			if (hasLatencyIssue) { issueCounts.latency++; }
+			if (hasInsecureIssue) { issueCounts.insecure++; }
+			if (blocked) { issueCounts.blocked++; }
+
+			appsMetadata[aid] = {
+				needsCompatibilityCheck: blocked,
+				sortingName: name.toLowerCase()
+			};
+
+			appsById[aid] = apps_len - 1;
+		}
 	}
 }
 

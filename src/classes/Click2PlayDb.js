@@ -4,14 +4,12 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
-
-/* eslint no-use-before-define: 0 */
 
 import conf from './Conf';
 import Updatable from './Updatable';
@@ -43,7 +41,7 @@ class Click2PlayDb extends Updatable {
 		log('processing c2p...');
 
 		try {
-			db = this._buildDb(data.click2play, data.click2playVersion);
+			db = Click2PlayDb._buildDb(data.click2play, data.click2playVersion);
 		} catch (e) {
 			log('Click2PlayDb processList() error', e);
 			return false;
@@ -66,18 +64,36 @@ class Click2PlayDb extends Updatable {
 
 	// TODO memory leak when you close tabs before reset() can run?
 	reset(tab_id) {
-		delete this.allowOnceList[tab_id];
+		if (!this.allowOnceList.hasOwnProperty(tab_id)) { return; }
+
+		let keep = false;
+		const allowKeys = Object.keys(this.allowOnceList[tab_id]);
+		allowKeys.forEach((appID) => {
+			const count = this.allowOnceList[tab_id][appID];
+			const newCount = count - 1;
+			this.allowOnceList[tab_id][appID] = newCount;
+			if (newCount > 0) {
+				keep = true;
+			}
+		});
+		if (!keep) {
+			delete this.allowOnceList[tab_id];
+		}
 	}
 
 	allowedOnce(tab_id, aid) {
-		return this.allowOnceList.hasOwnProperty(tab_id) && this.allowOnceList[tab_id].hasOwnProperty(aid);
+		return (
+			this.allowOnceList.hasOwnProperty(tab_id) &&
+			this.allowOnceList[tab_id].hasOwnProperty(aid) &&
+			this.allowOnceList[tab_id][aid] > 0
+		);
 	}
 
 	allowOnce(app_ids, tab_id) {
 		this.allowOnceList[tab_id] = {};
 
 		app_ids.forEach((app_id) => {
-			this.allowOnceList[tab_id][app_id] = 1;
+			this.allowOnceList[tab_id][app_id] = 2;
 		});
 	}
 
@@ -91,7 +107,7 @@ class Click2PlayDb extends Updatable {
 	 * @param   {string} 	version 	database version
 	 * @return  {Object}         		reconfigured database object
 	 */
-	_buildDb(entries, version) {
+	static _buildDb(entries, version) {
 		const apps = {};
 		let	allow;
 

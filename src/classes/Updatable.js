@@ -4,20 +4,20 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import _ from 'underscore';
+import { bind, isFunction } from 'underscore';
 import globals from './Globals';
 import conf from './Conf';
 import { getJson, fetchLocalJSONResource } from '../utils/utils';
 import { log } from '../utils/common';
 
-const { CDN_SUB_DOMAIN } = globals;
+const { CDN_BASE_URL } = globals;
 /**
  * Base class for BugDb, Click2PlayDb, CompatibilityDb and SurrogateDb.
  * It provides update functionality, which all of these subclasses
@@ -56,7 +56,7 @@ class Updatable {
 			callback
 		};
 
-		if (_.isFunction(version)) {
+		if (isFunction(version)) {
 			opts.callback = version;
 			delete opts.version;
 		}
@@ -131,7 +131,7 @@ class Updatable {
 	 */
 	_remoteFetcher(callback) {
 		log(`fetching ${this.type} from remote`);
-		const UPDATE_URL = `https://${CDN_SUB_DOMAIN}.ghostery.com/update/${
+		const UPDATE_URL = `${CDN_BASE_URL}/update/${
 			this.type === 'bugs' ? 'v3/bugs' : this.type}`;
 
 		getJson(UPDATE_URL).then((list) => {
@@ -166,7 +166,7 @@ class Updatable {
 		}
 
 		// Fetch new bugs list from remote.  Bind the callback param from _remoteFetcher() to this anonymous function
-		this._remoteFetcher(_.bind(function (result, list) {
+		this._remoteFetcher(bind(function(result, list) {
 			// if the fetch worked and we have a list returned
 			if (result && list) {
 				const data = this.processList(false, list);

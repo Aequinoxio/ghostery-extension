@@ -6,7 +6,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,14 +16,16 @@
 import conf from './Conf';
 import foundBugs from './FoundBugs';
 import Policy from './Policy';
+import { getCliqzData } from '../utils/cliqzModulesData';
 import { getTab } from '../utils/utils';
 import { log } from '../utils/common';
 import globals from './Globals';
 
+const IS_ANDROID = globals.BROWSER_INFO.os === 'android';
+
 /**
  * @class for handling Ghostery button.
  * @memberof BackgroundClasses
- * @todo  make it a Singelton
  */
 class BrowserButton {
 	constructor() {
@@ -31,7 +33,6 @@ class BrowserButton {
 			alert: [255, 157, 0, 230],
 			default: [51, 0, 51, 230]
 		};
-		this.policy = new Policy();
 	}
 
 	/**
@@ -39,6 +40,7 @@ class BrowserButton {
 	 * @param  {number} tabId		tab id
 	 */
 	update(tabId) {
+		if (IS_ANDROID) { return; }
 		// Update this specific tab
 		if (tabId) {
 			// In ES6 classes, we need to bind context to callback function
@@ -74,13 +76,14 @@ class BrowserButton {
 	 * @param 	{boolean}	alert			is it a special case which requires button to change its background color?
 	 */
 	_setIcon(active, tabId, trackerCount, alert) {
-		if (globals.BROWSER_INFO.os === 'android') { return; }
 		if (tabId <= 0) { return; }
+
+		const iconAlt = (!active) ? '_off' : '';
 
 		chrome.browserAction.setIcon({
 			path: {
-				19: `app/images/icon19${active ? '' : '_off'}.png`,
-				38: `app/images/icon38${active ? '' : '_off'}.png`
+				19: `app/images/icon19${iconAlt}.png`,
+				38: `app/images/icon38${iconAlt}.png`
 			},
 			tabId
 		}, () => {
@@ -91,7 +94,6 @@ class BrowserButton {
 				// provide callbacks, we must check that the tab exists again to compensate for a race
 				// condition that occurs if a user closes the tab while the trackers are still loading
 				getTab(tabId, () => {
-					// @EDGE setTitle not currently supported by EDGE
 					if (typeof chrome.browserAction.setTitle === 'function') {
 						chrome.browserAction.setTitle({
 							title: chrome.i18n.getMessage('browser_button_tooltip'),
@@ -101,11 +103,8 @@ class BrowserButton {
 
 					// Only show the badge if the conf setting allows it
 					if (conf.show_badge) {
-						// Add tracker count to the badgeText
-						chrome.browserAction.setBadgeText({
-							text: trackerCount,
-							tabId
-						});
+						const text = trackerCount;
+						chrome.browserAction.setBadgeText({ text, tabId });
 
 						// Set badge background color
 						chrome.browserAction.setBadgeBackgroundColor({
@@ -128,7 +127,7 @@ class BrowserButton {
 	 */
 	_getIconCount(tab) {
 		const tabId = tab.id;
-		const tabUrl = tab.url;
+		const tabHostUrl = tab.pageHost;
 		let	trackerCount = '';
 		let alert = false;
 
@@ -138,19 +137,38 @@ class BrowserButton {
 			// 	+ Ghostery was enabled after the tab started loading
 			// 	+ or, this is a tab onBeforeRequest doesn't run in (non-http/https page)
 			trackerCount = '';
-		} else {
-			const apps = foundBugs.getAppsCountByIssues(tabId, tabUrl);
-			trackerCount = apps.all.toString();
-			alert = (apps.total > 0);
+			this._setIcon(false, tabId, trackerCount, alert);
+			return;
 		}
+
+		const { appsCount, appsAlertCount } = BrowserButton._getTrackerCount(tabId);
+		const adBlockingCount = getCliqzData(tabId, tabHostUrl).trackerCount;
+		const antiTrackingCount = getCliqzData(tabId, tabHostUrl, true).trackerCount;
+
+		alert = (appsAlertCount > 0);
+		trackerCount = (appsCount + antiTrackingCount + adBlockingCount).toString();
 
 		// gray-out the icon when blocking has been disabled for whatever reason
 		if (trackerCount === '') {
 			this._setIcon(false, tabId, trackerCount, alert);
 		} else {
-			this._setIcon(!globals.SESSION.paused_blocking && !this.policy.whitelisted(tab.url), tabId, trackerCount, alert);
+			this._setIcon(!globals.SESSION.paused_blocking && Policy.getSitePolicy(tab.url) !== globals.WHITELISTED, tabId, trackerCount, alert);
 		}
+	}
+
+	/**
+	 * Gets tracker count the traditional way, from BugDb
+	 * @param  {number} tabId  the Tab Id
+	 * @param  {string} tabUrl the Tab URL
+	 * @return {Object}        the number of total trackers and alerted trackers in an Object
+	 */
+	static _getTrackerCount(tabId, tabUrl) {
+		const apps = foundBugs.getAppsCountByIssues(tabId, tabUrl);
+		return {
+			appsCount: apps.all,
+			appsAlertCount: apps.total,
+		};
 	}
 }
 
-export default BrowserButton;
+export default new BrowserButton();

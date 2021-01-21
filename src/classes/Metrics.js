@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,9 +24,19 @@ const FREQUENCIES = { // in milliseconds
 	monthly: 2419200000
 };
 const CRITICAL_METRICS = ['install', 'install_complete', 'upgrade', 'active', 'engaged', 'uninstall'];
-const { METRICS_SUB_DOMAIN, EXTENSION_VERSION, BROWSER_INFO } = globals;
-const IS_EDGE = (BROWSER_INFO.name === 'edge');
+const CAMPAIGN_METRICS = ['install', 'active', 'uninstall'];
+const { METRICS_BASE_URL, EXTENSION_VERSION, BROWSER_INFO } = globals;
 const MAX_DELAYED_PINGS = 100;
+// Set of conf keys used in constructing telemetry url
+const METRICS_URL_SET = new Set([
+	'enable_human_web',
+	'account',
+	'enable_metrics',
+	'show_alert',
+	'alert_expanded',
+	'show_cmp'
+]);
+
 /**
  * Class for handling telemetry pings.
  * @memberOf  BackgroundClasses
@@ -47,57 +57,26 @@ class Metrics {
 	 */
 	init(JUST_INSTALLED) {
 		if (JUST_INSTALLED) {
-			if (!IS_EDGE) {
-				return new Promise((resolve, reject) => {
-					let foundUTM = false;
-					// This query fails on Edge
-					chrome.tabs.query({
-						url: [
-							'https://www.ghostery.com/lp*',
-							'https://www.ghostery.com/*/lp*',
-							'https://www.ghostery.com/products*',
-							'https://www.ghostery.com/*/products*'
-						]
-					}, (tabs) => {
-						tabs.forEach((tab) => {
-							if (foundUTM) { return; }
-
-							const query = processUrlQuery(tab.url);
-							if (!query.utm_source || !query.utm_campaign) { return; }
-
-							this.utm_source = query.utm_source;
-							this.utm_campaign = query.utm_campaign;
-							foundUTM = true;
-							prefsSet({
-								utm_source: this.utm_source,
-								utm_campaign: this.utm_campaign
-							})
-								.then(prefs => resolve(prefs))
-								.catch(err => reject(err));
-						});
-						resolve();
-					});
-				});
-			}
-			return new Promise((resolve, reject) => {
-				chrome.tabs.query({}, (tabs) => {
-					let foundUTM = false;
+			return new Promise((resolve) => {
+				let foundUTM = false;
+				chrome.tabs.query({
+					url: [
+						'https://www.ghostery.com/*'
+					]
+				}, (tabs) => {
 					tabs.forEach((tab) => {
 						if (foundUTM) { return; }
-						if (tab.url && tab.url.includes('https://www.ghostery.com/') &&
-									(tab.url.includes('products') || tab.url.includes('lp'))) {
-							const query = processUrlQuery(tab.url);
-							if (!query.utm_source || !query.utm_campaign) { return; }
-							this.utm_source = query.utm_source;
-							this.utm_campaign = query.utm_campaign;
-							foundUTM = true;
-							prefsSet({
-								utm_source: this.utm_source,
-								utm_campaign: this.utm_campaign
-							})
-								.then(reject)
-								.catch(reject);
-						}
+
+						const query = processUrlQuery(tab.url);
+						if (!query.utm_source || !query.utm_campaign) { return; }
+
+						this.utm_source = query.utm_source;
+						this.utm_campaign = query.utm_campaign;
+						foundUTM = true;
+						prefsSet({
+							utm_source: this.utm_source,
+							utm_campaign: this.utm_campaign
+						});
 					});
 					resolve();
 				});
@@ -114,9 +93,6 @@ class Metrics {
 
 	/**
 	* Prepare data and send telemetry pings.
-	* All existing pings are listed here:
-	* https://docs.ghostery.com/confluence/display/CT/GBE+Usage+Analytics+Pings
-	*
 	* @param {string} type    type of the telemetry ping
 	*/
 	ping(type) {
@@ -135,93 +111,75 @@ class Metrics {
 				this._recordActive();
 				break;
 			case 'engaged':
-				this._sendReq('engaged', ['daily', 'weekly', 'monthly']);
+				this._recordEngaged();
 				break;
 
 			// Extension Usage
 			case 'pause':
-				this._sendReq('pause', ['all', 'daily', 'weekly']);
-				break;
-			case 'resume':
-				this._sendReq('resume', ['all', 'daily', 'weekly']);
-				break;
-			case 'trust_site':
-				this._sendReq('trust_site', ['all', 'daily', 'weekly']);
-				break;
 			case 'restrict_site':
-				this._sendReq('restrict_site', ['all', 'daily', 'weekly']);
-				break;
-			case 'live_scan':
-				this._sendReq('live_scan', ['all', 'daily', 'weekly']);
-				break;
+			case 'resume':
 			case 'sign_in':
-				this._sendReq('sign_in', ['all', 'daily', 'weekly']);
+			case 'trust_site':
+				this._sendReq(type, ['all', 'daily']);
 				break;
-			// New
-			case 'list_dash':
-				this._sendReq('list_dash', ['all', 'daily', 'weekly', 'monthly']); // ??? Why daily, etc?
-				break;
-			case 'history_dash':
-				this._sendReq('history_dash', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'history_learn':
-				this._sendReq('history_learn', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'performance_dash':
-				this._sendReq('performance_dash', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'performance_learn':
-				this._sendReq('performance_learn', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'rewards_dash':
-				this._sendReq('rewards_dash', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'rewards_learn':
-				this._sendReq('rewards_learn', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'premium_dash':
-				this._sendReq('premium_dash', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'premium_learn':
-				this._sendReq('premium_learn', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'antitrack_on':
-				this._sendReq('antitrack_on', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'antitrack_off':
-				this._sendReq('antitrack_off', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'adblock_on':
-				this._sendReq('adblock_on', ['all', 'daily', 'weekly', 'monthly']);
-				break;
+
+			// Ghostery 8.0+
 			case 'adblock_off':
-				this._sendReq('adblock_off', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'smartblock_on':
-				this._sendReq('smartblock_on', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'smartblock_off':
-				this._sendReq('smartblock_off', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'pause_snooze':
-				this._sendReq('pause_snooze', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'viewchange_from_simple':
-				this._sendReq('viewchange_from_simple', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'viewchange_from_detailed':
-				this._sendReq('viewchange_from_detailed', ['all', 'daily', 'weekly', 'monthly']);
-				break;
-			case 'viewchange_from_expanded':
-				this._sendReq('viewchange_from_expanded', ['all', 'daily', 'weekly', 'monthly']);
-				break;
+			case 'adblock_on':
+			case 'antitrack_off':
+			case 'antitrack_on':
 			case 'create_account_extension':
-				this._sendReq('create_account_extension', ['all', 'daily', 'weekly', 'monthly']);
-				break;
 			case 'create_account_setup':
-				this._sendReq('create_account_setup', ['all', 'daily', 'weekly', 'monthly']);
+			case 'list_dash':
+			case 'pause_snooze':
+			case 'smartblock_off':
+			case 'smartblock_on':
+			case 'viewchange_from_detailed':
+			case 'viewchange_from_expanded':
+			case 'viewchange_from_simple':
+				this._sendReq(type, ['all', 'daily']);
 				break;
-			// uncaught ping type
+
+			// Ghostery 8.3+
+			case 'sign_in_success':
+			case 'create_account_success':
+			case 'tutorial_start':
+			case 'tutorial_complete':
+			case 'setup_start':
+			case 'plus_cta_hub':
+			case 'plus_cta_extension':
+			case 'products_cta_android':
+			case 'products_cta_ios':
+			case 'products_cta_lite':
+			case 'hist_plus_cta':
+			case 'hist_stats_panel':
+			case 'hist_reset_stats':
+			case 'plus_panel_from_badge':
+			case 'plus_panel_from_menu':
+			case 'resubscribe':
+			case 'priority_support_submit':
+			case 'theme_change':
+			case 'manage_subscription':
+				this._sendReq(type, ['all']);
+				break;
+
+			// Promo Modals - Ghostery 8.4.4+
+			case 'promo_modals_insights_upgrade_cta':
+			case 'promo_modals_plus_upgrade_cta':
+			case 'promo_modals_decline_insights_upgrade':
+			case 'promo_modals_decline_plus_upgrade':
+			case 'promo_modals_show_upgrade_plus':
+			case 'promo_modals_show_insights':
+				this._sendReq(type, ['all']);
+				break;
+
+			// Onboarding Pings - Ghostery 8.5.2+
+			case 'intro_hub_click':
+			case 'intro_hub_home_upgrade':
+				this._sendReq(type, ['all']);
+				break;
+
+			// Uncaught Pings
 			default:
 				log(`metrics ping() error: ping name ${type} not found`);
 				break;
@@ -233,26 +191,25 @@ class Metrics {
 	 * @param  {string} 	conf key being changed
 	 */
 	setUninstallUrl(key) {
-		if (typeof chrome.runtime.setUninstallURL === 'function') {
-			// Set of conf keys used in constructing telemetry url
-			const METRICS_URL_SET = new Set([
-				'enable_human_web',
-				'enable_offers',
-				'login_info',
-				'enable_metrics',
-				'show_alert',
-				'alert_expanded',
-				'show_cmp'
-			]);
-
-			if (!key || METRICS_URL_SET.has(key)) {
-				const metrics_url = this._buildMetricsUrl('uninstall');
-				if (metrics_url.length) {
-					chrome.runtime.setUninstallURL(metrics_url);
-				}
+		if (typeof chrome.runtime.setUninstallURL === 'function' && (!key || METRICS_URL_SET.has(key))) {
+			const metrics_url = this._buildMetricsUrl('uninstall');
+			if (metrics_url.length) {
+				chrome.runtime.setUninstallURL(metrics_url);
 			}
 		}
 	}
+
+	/**
+	 * Helper for building query string key value pairs
+	 *
+	 * @private
+	 *
+	 * @since 8.5.4
+	 * @param  {string} query   param to be included in string
+	 * @param  {string} value   number value to be passed on through qeury string
+	 * @return {string}         complete query component
+	 */
+	_buildQueryPair = (query, value) => `&${query}=${encodeURIComponent(value)}`;
 
 	/**
 	 * Build telemetry URL
@@ -266,55 +223,93 @@ class Metrics {
 	_buildMetricsUrl(type, frequency) {
 		const frequencyString = (type !== 'uninstall') ? `/${frequency}` : '';
 
-		return `https://${METRICS_SUB_DOMAIN}.ghostery.com/${type}${frequencyString}?gr=-1` +
+		let metrics_url = `${METRICS_BASE_URL}/${type}${frequencyString}?gr=-1`;
+		metrics_url +=
+			// Crucial parameters
+			// Always added for uninstall URL
+			// Extension version
+			this._buildQueryPair('v', EXTENSION_VERSION) +
+			// User agent - browser
+			this._buildQueryPair('ua', BROWSER_INFO.token) +
+			// Operating system
+			this._buildQueryPair('os', BROWSER_INFO.os) +
+			// Browser language
+			this._buildQueryPair('l', conf.language) +
+			// Browser version
+			this._buildQueryPair('bv', BROWSER_INFO.version) +
+			// Date of install (former install_date)
+			this._buildQueryPair('id', conf.install_date) +
+			// Showing campaign messages (former show_cmp)
+			this._buildQueryPair('sc', conf.show_cmp ? '1' : '0') +
+			// Subscription Type
+			this._buildQueryPair('st', Metrics._getSubscriptionType().toString()) +
+
+			// New parameters for Ghostery 8.5.2
+			// Subscription Interval
+			this._buildQueryPair('si', Metrics._getSubscriptionInterval().toString()) +
+			// Product ID Parameter
+			this._buildQueryPair('pi', 'gbe');
+
+		if (type !== 'uninstall') {
+			metrics_url +=
 			// Old parameters, old names
 			// Human web
-			`&hw=${encodeURIComponent(IS_EDGE ? '0' : (conf.enable_human_web ? '1' : '0'))}` +
-			// Extension version
-			`&v=${encodeURIComponent(EXTENSION_VERSION)}` +
-			// User agent - browser
-			`&ua=${encodeURIComponent(BROWSER_INFO.token)}` +
-			// Operating system
-			`&os=${encodeURIComponent(BROWSER_INFO.os)}` +
-			// Browser language
-			`&l=${encodeURIComponent(conf.language)}` +
+			this._buildQueryPair('hw', conf.enable_human_web ? '1' : '0') +
 			// Old parameters, new names
-			// Offers (former offers)
-			`&of=${encodeURIComponent(IS_EDGE ? '0' : (conf.enable_offers ? '1' : '0'))}` +
 			// Random number, assigned at install (former install_rand)
-			`&ir=${encodeURIComponent(conf.install_random_number)}` +
+			this._buildQueryPair('ir', conf.install_random_number) +
 			// Login state (former signed_in)
-			`&sn=${encodeURIComponent(conf.login_info.logged_in ? '1' : '0')}` +
-			// Date of install (former install_date)
-			`&id=${encodeURIComponent(conf.install_date)}` +
+			this._buildQueryPair('sn', conf.account ? '1' : '0') +
 			// Noncritical ping (former noncritical)
-			`&nc=${encodeURIComponent(conf.enable_metrics ? '1' : '0')}` +
+			this._buildQueryPair('nc', conf.enable_metrics ? '1' : '0') +
 			// Purplebox state (former purplebox)
-			`&pb=${encodeURIComponent(conf.show_alert ? (conf.alert_expanded ? '1' : '2') : '0')}` +
-			// Showing campaign messages (former show_cmp)
-			`&sc=${encodeURIComponent(conf.show_cmp ? '1' : '0')}` +
-			// Marketing source (Former utm_source)
-			`&us=${encodeURIComponent(this.utm_source)}` +
-			// Marketing campaign (Former utm_campaign)
-			`&uc=${encodeURIComponent(this.utm_campaign)}` +
+			this._buildQueryPair('pb', conf.show_alert ? (conf.alert_expanded ? '1' : '2') : '0') +
 
 			// New parameters, new names
 			// Extension_view - which view of the extension is the user in
-			`&ev=${encodeURIComponent(conf.is_expert ? (conf.is_expanded ? '3' : '2') : '1')}` +
+			this._buildQueryPair('ev', conf.is_expert ? (conf.is_expanded ? '3' : '2') : '1') +
 			// Adblocking state
-			`&ab=${encodeURIComponent(conf.enable_ad_block ? '1' : '0')}` +
+			this._buildQueryPair('ab', conf.enable_ad_block ? '1' : '0') +
 			// Smartblocking state
-			`&sm=${encodeURIComponent(conf.enable_smart_block ? '1' : '0')}` +
+			this._buildQueryPair('sm', conf.enable_smart_block ? '1' : '0') +
 			// Antitracking state
-			`&at=${encodeURIComponent(conf.enable_anti_tracking ? '1' : '0')}` +
+			this._buildQueryPair('at', conf.enable_anti_tracking ? '1' : '0') +
 			// The deepest setup page reached by user during setup
-			`&ss=${encodeURIComponent((conf.metrics.install_complete_all || type === 'install_complete') ? conf.setup_step.toString() : '-1')}` +
-			// User choice of default or custom path during setup
-			`&sp=${encodeURIComponent(conf.setup_path.toString())}` +
+			this._buildQueryPair('ss', (conf.metrics.install_complete_all || type === 'install_complete') ? conf.setup_step.toString() : '-1') +
+			// The number of times the user has gone through setup
+			this._buildQueryPair('sl', conf.setup_number.toString()) +
 			// Type of blocking selected during setup
-			`&sb=${encodeURIComponent(conf.setup_block.toString())}` +
+			this._buildQueryPair('sb', conf.setup_block.toString()) +
 			// Recency, days since last active daily ping
-			`&rc=${encodeURIComponent(this._getRecency().toString())}`;
+			this._buildQueryPair('rc', Metrics._getRecencyActive(type, frequency).toString()) +
+
+			// New parameters to Ghostery 8.3
+			// Whether the computer ever had a Paid Subscription
+			this._buildQueryPair('ps', conf.paid_subscription ? '1' : '0') +
+			// Active Velocity
+			this._buildQueryPair('va', Metrics._getVelocityActive(type).toString()) +
+			// Engaged Recency
+			this._buildQueryPair('re', Metrics._getRecencyEngaged(type, frequency).toString()) +
+			// Engaged Velocity
+			this._buildQueryPair('ve', Metrics._getVelocityEngaged(type).toString()) +
+			// Theme
+			this._buildQueryPair('th', Metrics._getThemeValue().toString()) +
+
+			// New parameter for Ghostery 8.5.3
+			// AB tests enabled?
+			this._buildQueryPair('ts', conf.enable_abtests ? '1' : '0');
+		}
+
+		if (CAMPAIGN_METRICS.includes(type) || type === 'uninstall') {
+			// only send campaign attribution when necessary
+			metrics_url +=
+				// Marketing source (Former utm_source)
+				this._buildQueryPair('us', this.utm_source) +
+				// Marketing campaign (Former utm_campaign)
+				this._buildQueryPair('uc', this.utm_campaign);
+		}
+
+		return metrics_url;
 	}
 
 	/**
@@ -322,16 +317,13 @@ class Metrics {
 	 *
 	 * @private
 	 *
-	 * @param {string} 		type 						ping type
+	 * @param {string} 		type 				ping type
 	 * @param {array} 		[frequencies = ['all']] 	array of ping frequencies
 	 */
-	_sendReq(type, frequencies) {
+	_sendReq(type, frequencies = ['all']) {
 		let options = {};
-		if (typeof frequencies === 'undefined') {
-			frequencies = ['all']; // eslint-disable-line no-param-reassign
-		}
 
-		if (!IS_EDGE && typeof fetch === 'function') {
+		if (typeof fetch === 'function') {
 			const headers = new Headers();
 			headers.append('Content-Type', 'image/gif');
 
@@ -354,7 +346,7 @@ class Metrics {
 
 				log(`sending ${type} ping with ${frequency} frequency`);
 
-				if (!IS_EDGE && typeof fetch === 'function') {
+				if (typeof fetch === 'function') {
 					const request = new Request(metrics_url, options);
 					fetch(request).catch((err) => {
 						log(`Error sending Metrics ${type} ping`, err);
@@ -368,19 +360,115 @@ class Metrics {
 			}
 		});
 	}
+
 	/**
 	 * Calculate days since the last daily active ping.
 	 *
 	 * @private
 	 *
-	 * @return {number} 	in days since the last daily active ping
+	 * @return {number} in days since the last daily active ping
 	 */
-	_getRecency() {
-		if (conf.metrics.active_daily) {
+	static _getRecencyActive(type, frequency) {
+		if (conf.metrics.active_daily && (type === 'active' || type === 'engaged') && frequency === 'daily') {
 			return Math.floor((Number(new Date().getTime()) - conf.metrics.active_daily) / 86400000);
 		}
 		return -1;
 	}
+
+	/**
+	 * Calculate days since the last daily engaged ping.
+	 *
+	 * @private
+	 *
+	 * @return {number}	in days since the last daily engaged ping
+	 */
+	static _getRecencyEngaged(type, frequency) {
+		if (conf.metrics.engaged_daily && (type === 'active' || type === 'engaged') && frequency === 'daily') {
+			return Math.floor((Number(new Date().getTime()) - conf.metrics.engaged_daily) / 86400000);
+		}
+		return -1;
+	}
+
+	/**
+	 * Get the Active Velocity
+	 * @private
+	 * @return {number}  The Active Velocity
+	 */
+	static _getVelocityActive(type) {
+		if (type !== 'active' && type !== 'engaged') {
+			return -1;
+		}
+		const active_daily_velocity = conf.metrics.active_daily_velocity || [];
+		const today = Math.floor(Number(new Date().getTime()) / 86400000);
+		return active_daily_velocity.filter(el => el > today - 7).length;
+	}
+
+	/**
+	 * Get the Engaged Velocity
+	 * @private
+	 * @return {number}  The Engaged Velocity
+	 */
+	static _getVelocityEngaged(type) {
+		if (type !== 'active' && type !== 'engaged') {
+			return -1;
+		}
+		const engaged_daily_velocity = conf.metrics.engaged_daily_velocity || [];
+		const today = Math.floor(Number(new Date().getTime()) / 86400000);
+		return engaged_daily_velocity.filter(el => el > today - 7).length;
+	}
+
+	/**
+	 * Get the Subscription Type
+	 * @return {string} Subscription Name
+	 */
+	static _getSubscriptionType() {
+		if (!conf.account) {
+			return -1;
+		}
+		const subscriptions = conf.account.subscriptionData;
+		if (!subscriptions) {
+			return -1;
+		}
+		return subscriptions.productName.toUpperCase().replace(' ', '_');
+	}
+
+	/**
+	 * Get the Int associated with the Current Theme.
+	 * @private
+	 * @return {number} value associated with the Current Theme
+	 */
+	static _getThemeValue() {
+		const { current_theme } = conf;
+		switch (current_theme) {
+			case 'midnight-theme':
+				return 1;
+			case 'leaf-theme':
+				return 2;
+			case 'palm-theme':
+				return 3;
+			default:
+				return 0;
+		}
+	}
+
+	/**
+	 * Get the Int associated with the users subscription interval
+	 * @private
+	 * @return {number} String associated with the users subscription interval
+	 */
+	static _getSubscriptionInterval() {
+		const subscriptionInterval = conf && conf.account && conf.account.subscriptionData && conf.account.subscriptionData.planInterval;
+
+		switch (subscriptionInterval) {
+			case 'month':
+				return 1;
+			case 'year':
+				return 2;
+			default:
+				return 0;
+		}
+	}
+
 	/**
 	 * Calculate remaining scheduled time for a ping
 	 *
@@ -388,9 +476,9 @@ class Metrics {
 	 *
 	 * @param {string}	type 		type of the recorded event
 	 * @param {string}	frequency 	one of 'all', 'daily', 'weekly'
-	 * @return {number} 				number in milliseconds over the frequency since the last ping
+	 * @return {number} 			number in milliseconds over the frequency since the last ping
 	 */
-	_timeToExpired(type, frequency) {
+	static _timeToExpired(type, frequency) {
 		if (frequency === 'all') {
 			return 0;
 		}
@@ -400,6 +488,7 @@ class Metrics {
 		const frequency_ago = now - FREQUENCIES[frequency];
 		return (last === null) ? 0 : (last - frequency_ago);
 	}
+
 	/**
 	 * Decide if the ping should be sent
 	 *
@@ -410,7 +499,7 @@ class Metrics {
 	 * @return {boolean} 			true/false
 	 */
 	_checkPing(type, frequency) {
-		const result = this._timeToExpired(type, frequency);
+		const result = Metrics._timeToExpired(type, frequency);
 		if (result > 0) {
 			return false;
 		}
@@ -430,6 +519,7 @@ class Metrics {
 		}
 		return false;
 	}
+
 	/**
 	 * Record Install event
 	 * @private
@@ -475,7 +565,18 @@ class Metrics {
 	 * @private
 	 */
 	_recordActive() {
-		const daily = this._timeToExpired('active', 'daily');
+		const active_daily_velocity = conf.metrics.active_daily_velocity || [];
+		const today = Math.floor(Number(new Date().getTime()) / 86400000);
+		active_daily_velocity.sort();
+		if (!active_daily_velocity.includes(today)) {
+			active_daily_velocity.push(today);
+			if (active_daily_velocity.length > 7) {
+				active_daily_velocity.shift();
+			}
+		}
+		conf.metrics.active_daily_velocity = active_daily_velocity;
+
+		const daily = Metrics._timeToExpired('active', 'daily');
 		if (daily > 0) {
 			setTimeout(() => {
 				this._sendReq('active', ['daily']);
@@ -490,7 +591,7 @@ class Metrics {
 			}, FREQUENCIES.daily);
 		}
 
-		const weekly = this._timeToExpired('active', 'weekly');
+		const weekly = Metrics._timeToExpired('active', 'weekly');
 		if (weekly > 0) {
 			setTimeout(() => {
 				this._sendReq('active', ['weekly']);
@@ -505,7 +606,7 @@ class Metrics {
 			}, FREQUENCIES.weekly);
 		}
 
-		const monthly = this._timeToExpired('active', 'monthly');
+		const monthly = Metrics._timeToExpired('active', 'monthly');
 		if (monthly > 0) {
 			if (monthly <= FREQUENCIES.biweekly) {
 				setTimeout(() => {
@@ -524,6 +625,33 @@ class Metrics {
 			this._sendReq('active', ['monthly']);
 			this._repeat();
 		}
+	}
+
+	/**
+	 * Record Engaged event
+	 * @private
+	 */
+	_recordEngaged() {
+		const engaged_daily_velocity = conf.metrics.engaged_daily_velocity || [];
+		const engaged_daily_count = conf.metrics.engaged_daily_count || new Array(engaged_daily_velocity.length).fill(0);
+
+		const today = Math.floor(Number(new Date().getTime()) / 86400000); // Today's time
+
+		engaged_daily_velocity.sort();
+		if (!engaged_daily_velocity.includes(today)) {
+			engaged_daily_velocity.push(today);
+			engaged_daily_count.push(1);
+			if (engaged_daily_velocity.length > 7) {
+				engaged_daily_count.shift();
+				engaged_daily_velocity.shift();
+			}
+		} else {
+			engaged_daily_count[engaged_daily_velocity.indexOf(today)]++;
+		}
+
+		conf.metrics.engaged_daily_count = engaged_daily_count;
+		conf.metrics.engaged_daily_velocity = engaged_daily_velocity;
+		this._sendReq('engaged', ['daily', 'weekly', 'monthly']);
 	}
 
 	/**

@@ -4,32 +4,43 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-use-before-define: 0 */
-
-import { GET_PANEL_DATA,
+import {
+	UPDATE_PANEL_DATA,
 	SHOW_NOTIFICATION,
 	CLOSE_NOTIFICATION,
-	LOGIN_SUCCESS,
-	LOGOUT,
-	CREATE_ACCOUNT_SUCCESS,
-	TOGGLE_EXPANDED,
 	TOGGLE_EXPERT,
-	TOGGLE_DRAWER_SETTING,
-	UPDATE_NOTIFICATION_STATUS } from '../constants/constants';
-import { sendMessage } from '../utils/msg';
+	TOGGLE_CLIQZ_FEATURE,
+	UPDATE_NOTIFICATION_STATUS,
+	TOGGLE_CHECKBOX,
+	TOGGLE_EXPANDED,
+	SET_THEME,
+	CLEAR_THEME,
+	TOGGLE_PROMO_MODAL
+} from '../constants/constants';
+import {
+	LOGIN_SUCCESS,
+	LOGIN_FAIL,
+	LOGOUT_SUCCESS,
+	REGISTER_SUCCESS,
+	REGISTER_FAIL,
+	RESET_PASSWORD_SUCCESS,
+	RESET_PASSWORD_FAIL
+} from '../../Account/AccountConstants';
+import { sendMessage, sendMessageInPromise } from '../utils/msg';
+import { setTheme } from '../utils/utils';
 
 const initialState = {
 	enable_ad_block: true,
 	enable_anti_tracking: true,
 	enable_smart_block: true,
-	initialized: false, // prevent rendering subviews before GET_PANEL_DATA resolves
+	initialized: false, // prevent rendering subviews before UPDATE_PANEL_DATA resolves
 	is_expanded: false,
 	is_expert: false,
 	needsReload: {
@@ -39,112 +50,17 @@ const initialState = {
 	notificationFilter: '', // compatibility/slow tracker/success message
 	notificationText: '',
 	notificationShown: false,
-	reload_banner_status: {
-		dismissals: [],
-		show: true,
-	},
-	trackers_banner_status: {
-		dismissals: [],
-		show: true,
-	},
-};
-/**
- * Default export for panel view reducer. Handles actions
- * which are common to many derived views.
- * @memberOf  PanelReactReducers
- *
- * @param  {Object} state 		current state
- * @param  {Object} action 		action which provides data
- * @return {Object}        		updated state clone
- */
-export default (state = initialState, action) => {
-	switch (action.type) {
-		case GET_PANEL_DATA: {
-			return Object.assign({}, state, action.data, { initialized: true });
-		}
-		case SHOW_NOTIFICATION: {
-			const updated = _showNotification(state, action);
-			return Object.assign({}, state, updated);
-		}
-		case CLOSE_NOTIFICATION: {
-			const updated = _closeNotification(state, action);
-			return Object.assign({}, state, updated);
-		}
-		case CREATE_ACCOUNT_SUCCESS:
-			sendMessage('ping', 'create_account_extension');
-			return Object.assign({}, state, {
-				logged_in: true,
-				email: action.data.ClaimEmailAddress,
-				is_validated: action.data.ClaimEmailAddressValidated,
-				decoded_user_token: action.data,
-			});
-		case LOGIN_SUCCESS: {
-			return Object.assign({}, state, {
-				logged_in: true,
-				email: action.data.ClaimEmailAddress,
-				is_validated: action.data.ClaimEmailAddressValidated,
-				decoded_user_token: action.data,
-			});
-		} case LOGOUT: {
-			return Object.assign({}, state, {
-				logged_in: action.data.logged_in,
-				email: action.data.email,
-				is_validated: action.data.is_validated,
-				decoded_user_token: action.data.decoded_user_token,
-			});
-		}
-		case TOGGLE_DRAWER_SETTING: {
-			let pingName = '';
-			switch (action.data.settingName) {
-				case 'enable_anti_tracking':
-					pingName = action.data.isEnabled ? 'antitrack_off' : 'antitrack_on';
-					break;
-				case 'enable_ad_block':
-					pingName = action.data.isEnabled ? 'adblock_off' : 'adblock_on';
-					break;
-				case 'enable_smart_block':
-					pingName = action.data.isEnabled ? 'smartblock_off' : 'smartblock_on';
-					break;
-				default:
-					break;
-			}
-			if (pingName) {
-				sendMessage('ping', pingName);
-			}
-			sendMessage('setPanelData', { [action.data.settingName]: !action.data.isEnabled });
-			return Object.assign({}, state, { [action.data.settingName]: !action.data.isEnabled });
-		}
-		case TOGGLE_EXPANDED: {
-			sendMessage('setPanelData', { is_expanded: !state.is_expanded });
-			sendMessage('ping', state.is_expanded ? 'viewchange_from_expanded' : 'viewchange_from_detailed');
-
-			return Object.assign({}, state, { is_expanded: !state.is_expanded });
-		}
-		case TOGGLE_EXPERT: {
-			sendMessage('setPanelData', { is_expert: !state.is_expert });
-			let pingName = '';
-			if (state.is_expert) {
-				if (state.is_expanded) {
-					pingName = 'viewchange_from_expanded';
-				} else {
-					pingName = 'viewchange_from_detailed';
-				}
-			} else {
-				pingName = 'viewchange_from_simple';
-			}
-			sendMessage('ping', pingName);
-			return Object.assign({}, state, { is_expert: !state.is_expert });
-		}
-		case UPDATE_NOTIFICATION_STATUS: {
-			const updated = _updateNotificationStatus(state, action);
-			return Object.assign({}, state, updated);
-		}
-		default: return state;
-	}
+	reload_banner_status: true,
+	trackers_banner_status: true,
+	loggedIn: false,
+	email: '',
+	emailValidated: false,
+	current_theme: 'default',
+	isPromoModalHidden: false,
 };
 
 /**
- * Trigger notifcation and needsReload banners. Persist the change.
+ * Trigger notification and needsReload banners. Persist the change.
  * @memberOf  PanelReactReducers
  * @private
  * @param  {Object} state 		current state
@@ -152,11 +68,9 @@ export default (state = initialState, action) => {
  * @return {Object}        		notification parameters
  */
 const _showNotification = (state, action) => {
-	const msg = action.data;
-	const { reload } = msg;
-	const trackersBannerStatus = Object.assign({ ...state.trackers_banner_status, dismissals: [...state.trackers_banner_status.dismissals] });
-	const reloadBannerStatus = Object.assign({ ...state.reload_banner_status, dismissals: [...state.reload_banner_status.dismissals] });
-	const nowTime = Number(new Date().getTime());
+	const msg = action.data || action.payload;
+	// overrideNotificationShown ensures certain notifications are shown regardless of user's settings
+	const { reload, overrideNotificationShown } = msg;
 
 	let updated_notificationClasses = state.notificationClasses;
 	let updated_notificationShown = state.notificationShown;
@@ -185,101 +99,49 @@ const _showNotification = (state, action) => {
 		sendMessage('setPanelData', { needsReload: updated_needsReload });
 
 		// if we have changes and the user wants to see banners, then show
-		if (Object.keys(updated_needsReload.changes).length > 0 && reloadBannerStatus.show && nowTime > reloadBannerStatus.show_time) {
+		if ((msg.text || Object.keys(updated_needsReload.changes).length > 0) && state.reload_banner_status) {
 			updated_notificationShown = true;
 		} else {
 			updated_notificationShown = false;
 		}
 
-		updated_notificationClasses = 'warning';
+		updated_notificationClasses = msg.classes || 'warning';
 	} else {
 		// Notification banners (success/warnings)
-		if (trackersBannerStatus.show && nowTime > trackersBannerStatus.show_time) {
+		if (state.trackers_banner_status) {
 			updated_notificationShown = true;
 		} else {
 			updated_notificationShown = false;
 		}
 
-		updated_notificationClasses = msg.classes;
+		updated_notificationClasses = msg.classes || '';
+		if (msg.filter === 'tooltip') {
+			updated_needsReload.changes = {};
+		}
 	}
-
 	return {
 		needsReload: updated_needsReload,
 		notificationClasses: updated_notificationClasses,
 		notificationFilter: msg.filter || '',
 		notificationText: msg.text || '',
-		notificationShown: updated_notificationShown,
+		notificationShown: overrideNotificationShown || updated_notificationShown,
 	};
 };
 
 /**
- * Dismiss notification banners. Update the 'reload_banner_status' and
- * 'trackers_banner_status' properties. If banners are dismissed BANNERS_ALLOWED times,
- * within BANNER_INTERVAL, they will not be shown again for BANNERS_BANNED_TIME. Persist the change.
+ * Dismiss notification banners. Update notificationShown
  * @memberOf  PanelReactReducers
  * @private
  * @param  {Object} state 		current state
  * @param  {Object} action 		action which contains data
  * @return {Object}        		notification parameters
  */
-const _closeNotification = (state, action) => {
-	const { banner_status_name } = action.data;
-	const BANNER_INTERVAL = 3600000; // one hour
-	const BANNERS_ALLOWED = 3;
-	const BANNERS_BANNED_TIME = 604800000; // one week
-
-	if (banner_status_name === 'temp_banner_status') {
-		return {
-			notificationShown: false,
-		};
-	}
-
-	// deep clone nested dismissals[]
-	let banner_status = { ...state[banner_status_name], dismissals: [...state[banner_status_name].dismissals] };
-
-	// show_time becomes 0 if it was set explicitly through Settinns or Setting page,
-	// or came through Sync which delivered choice different from default value
-	if (!banner_status.show_time) {
-		return false;
-	}
-
-	const { dismissals } = banner_status;
-	const lastDismissal = Number(new Date().getTime());
-
-	dismissals.push(lastDismissal);
-	let firstDismissal = dismissals[0];
-
-	while (lastDismissal > firstDismissal + BANNER_INTERVAL) {
-		dismissals.shift();
-		// eslint-disable-next-line prefer-destructuring
-		firstDismissal = dismissals[0];
-	}
-
-	if (dismissals.length >= BANNERS_ALLOWED) {
-		banner_status = {
-			show_time: lastDismissal + BANNERS_BANNED_TIME,
-			dismissals: [],
-			show: false,
-		};
-	} else {
-		banner_status = {
-			show_time: lastDismissal,
-			dismissals,
-			show: true,
-		};
-	}
-
-	// persist to background
-	sendMessage('setPanelData', { [banner_status_name]: banner_status });
-
-	return {
-		[banner_status_name]: banner_status,
-		notificationShown: false,
-	};
-};
+const _closeNotification = () => ({
+	notificationShown: false
+});
 
 /**
- * Set the 'show' property on reload_banner_status and trackers_banner_status. Update from
+ * Update reload_banner_status and trackers_banner_status from
  * Settings > Notifications. Persist the change.
  * @memberOf  PanelReactReducers
  * @private
@@ -289,15 +151,218 @@ const _closeNotification = (state, action) => {
  * @return {Object}        		notification parameter
  */
 const _updateNotificationStatus = (state, action) => {
-	const msg = action.data;
-	const banner_status_name = msg.event;
-	// deep clone nested dismissals[] and update 'show'
-	const banner_status = { ...state[banner_status_name], dismissals: [...state[banner_status_name].dismissals], show: msg.checked };
-
+	const banner_status = action.data.checked;
+	const banner_status_name = action.data.event;
 	// persist to background
 	sendMessage('setPanelData', { [banner_status_name]: banner_status });
 
 	return {
 		[banner_status_name]: banner_status,
 	};
+};
+
+/**
+ * Default export for panel view reducer. Handles actions
+ * which are common to many derived views.
+ * @memberOf  PanelReactReducers
+ *
+ * @param  {Object} state 		current state
+ * @param  {Object} action 		action which provides data
+ * @return {Object}        		updated state clone
+ */
+export default (state = initialState, action) => {
+	switch (action.type) {
+		case UPDATE_PANEL_DATA: {
+			return { ...state, ...action.data, initialized: true };
+		}
+		case SET_THEME: {
+			const { name, css } = action.data;
+			setTheme(document, name, { themeData: { [name]: { name, css } } });
+			return { ...state, current_theme: name };
+		}
+		case CLEAR_THEME: {
+			setTheme(document, initialState.current_theme);
+			return { ...state, current_theme: initialState.current_theme };
+		}
+		case SHOW_NOTIFICATION: {
+			const updated = _showNotification(state, action);
+			return { ...state, ...updated };
+		}
+		case CLOSE_NOTIFICATION: {
+			const updated = _closeNotification(state, action);
+			return { ...state, ...updated };
+		}
+		case LOGIN_SUCCESS: {
+			const notificationAction = {
+				payload: {
+					text: `${t('panel_signin_success')} ${action.payload.email}`,
+					classes: 'success',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated, loggedIn: true };
+		}
+		case LOGIN_FAIL: {
+			const { errors } = action.payload;
+			let errorText = t('server_error_message');
+			errors.forEach((err) => {
+				switch (err.code) {
+					case '10050':
+					case '10110':
+						errorText = t('no_such_email_password_combo');
+						break;
+					case 'too_many_failed_logins':
+						errorText = t('too_many_failed_logins_text');
+						break;
+					default:
+						errorText = t('server_error_message');
+				}
+			});
+			const notificationAction = {
+				payload: {
+					text: errorText,
+					classes: 'alert',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated };
+		}
+		case REGISTER_SUCCESS: {
+			const { email } = action.payload;
+			const notificationAction = {
+				payload: {
+					text: t('panel_email_verification_sent', email),
+					classes: 'success',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated, email };
+		}
+		case REGISTER_FAIL: {
+			const { errors } = action.payload;
+			let errorText = t('server_error_message');
+			errors.forEach((err) => {
+				switch (err.code) {
+					case '10070':
+						errorText = t('email_address_in_use');
+						break;
+					case '10080':
+						errorText = t('your_email_do_not_match');
+						break;
+					default:
+						errorText = t('server_error_message');
+				}
+			});
+			const notificationAction = {
+				payload: {
+					text: errorText,
+					classes: 'alert',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated };
+		}
+		case LOGOUT_SUCCESS: {
+			setTheme(document);
+			return { ...state, current_theme: initialState.current_theme };
+		}
+		case RESET_PASSWORD_SUCCESS: {
+			const notificationAction = {
+				payload: {
+					text: t('banner_check_your_email_title'),
+					classes: 'success',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated };
+		}
+		case RESET_PASSWORD_FAIL: {
+			const { errors } = action.payload;
+			let errorText = t('server_error_message');
+			errors.forEach((err) => {
+				switch (err.code) {
+					case '10050':
+					case '10110':
+						errorText = t('banner_email_not_in_system_message');
+						break;
+					case 'too_many_password_resets':
+						errorText = t('too_many_password_resets_text');
+						break;
+					default:
+						errorText = t('server_error_message');
+				}
+			});
+			const notificationAction = {
+				payload: {
+					text: errorText,
+					classes: 'alert',
+					overrideNotificationShown: true,
+				}
+			};
+			const updated = _showNotification(state, notificationAction);
+			return { ...state, ...updated };
+		}
+		case TOGGLE_CLIQZ_FEATURE: {
+			let pingName = '';
+			switch (action.data.featureName) {
+				case 'enable_anti_tracking':
+					pingName = action.data.isEnabled ? 'antitrack_off' : 'antitrack_on';
+					break;
+				case 'enable_ad_block':
+					pingName = action.data.isEnabled ? 'adblock_off' : 'adblock_on';
+					break;
+				case 'enable_smart_block':
+					pingName = action.data.isEnabled ? 'smartblock_off' : 'smartblock_on';
+					break;
+				default:
+					break;
+			}
+			sendMessageInPromise('setPanelData', { [action.data.featureName]: !action.data.isEnabled }).then(() => {
+				if (pingName) {
+					sendMessage('ping', pingName);
+				}
+			});
+			return { ...state, [action.data.featureName]: !action.data.isEnabled };
+		}
+		case TOGGLE_EXPANDED: {
+			sendMessage('setPanelData', { is_expanded: !state.is_expanded });
+			sendMessage('ping', state.is_expanded ? 'viewchange_from_expanded' : 'viewchange_from_detailed');
+
+			return { ...state, is_expanded: !state.is_expanded };
+		}
+		case TOGGLE_EXPERT: {
+			sendMessage('setPanelData', { is_expert: !state.is_expert });
+			let pingName = '';
+			if (state.is_expert) {
+				if (state.is_expanded) {
+					pingName = 'viewchange_from_expanded';
+				} else {
+					pingName = 'viewchange_from_detailed';
+				}
+			} else {
+				pingName = 'viewchange_from_simple';
+			}
+			sendMessage('ping', pingName);
+			return { ...state, is_expert: !state.is_expert };
+		}
+		case UPDATE_NOTIFICATION_STATUS: {
+			const updated = _updateNotificationStatus(state, action);
+			return { ...state, ...updated };
+		}
+		case TOGGLE_CHECKBOX: {
+			return state;
+		}
+		case TOGGLE_PROMO_MODAL: {
+			return {
+				...state,
+				isPromoModalHidden: !state.isPromoModalHidden
+			};
+		}
+		default: return state;
+	}
 };

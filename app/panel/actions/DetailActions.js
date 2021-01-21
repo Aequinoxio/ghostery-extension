@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,7 +17,7 @@ import { TOGGLE_EXPANDED } from '../constants/constants';
  * Called from Detail and picked up by Panel reducer
  * @return {Object}
  */
-export function toggleExpanded() {
+export default function toggleExpanded() {
 	return {
 		type: TOGGLE_EXPANDED,
 	};

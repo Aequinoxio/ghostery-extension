@@ -4,23 +4,21 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint consistent-return: 0 */
-
 import conf from './Conf';
 import foundBugs from './FoundBugs';
 import tabInfo from './TabInfo';
 import Policy from './Policy';
 import globals from './Globals';
+import account from './Account';
 import { log } from '../utils/common';
 import { sendMessage, injectScript } from '../utils/utils';
-import * as accounts from '../utils/accounts';
 
 const t = chrome.i18n.getMessage;
 /**
@@ -30,7 +28,6 @@ const t = chrome.i18n.getMessage;
  */
 class PurpleBox {
 	constructor() {
-		this.policy = new Policy();
 		this.channelsSupported = (typeof chrome.runtime.onConnect === 'object');
 		this.ports = new Map();
 	}
@@ -45,11 +42,14 @@ class PurpleBox {
 	 */
 	createBox(tab_id) {
 		const tab = tabInfo.getTabInfo(tab_id);
-		// If the tab is prefetched, we can't add purplebox to it.
+		// Skip in the event of pause, trust, prefetching, non http/s pages or Chrome (< 75)/Edge new tab page
 		if (!conf.show_alert ||
 			globals.SESSION.paused_blocking ||
-			(conf.hide_alert_trusted && !!this.policy.whitelisted(tab.url)) ||
-			!tab || tab.purplebox || globals.EXCLUDES.includes(tab.host)) {
+			(conf.hide_alert_trusted && !!Policy.checkSiteWhitelist(tab.url)) ||
+			!tab || tab.purplebox || !tab.protocol.startsWith('http') ||
+			tab.path.includes('_/chrome/newtab') || tab.host.includes('ntp.msn.com') ||
+			globals.EXCLUDES.includes(tab.host) ||
+			globals.BROWSER_INFO.os === 'android') {
 			return Promise.resolve(false);
 		}
 
@@ -70,10 +70,8 @@ class PurpleBox {
 				box_warning_slow: t('box_warning_slow'),
 				box_warning_nonsecure: t('box_warning_nonsecure'),
 				tracker: t('box_tracker'),
-				hide: t('box_hide'),
 				settings: t('box_settings'),
 				options_expanded: t('box_options_expanded'),
-				hide_expanded: t('box_hide_expanded'),
 				settings_expanded: t('box_settings_expanded'),
 				box_dismiss_0s: t('box_dismiss_0s'),
 				box_dismiss_5s: t('box_dismiss_5s'),
@@ -111,7 +109,7 @@ class PurpleBox {
 									conf.alert_bubble_pos = message.message.alert_bubble_pos;
 									conf.alert_bubble_timeout = message.message.alert_bubble_timeout;
 									// push new settings to API
-									accounts.pushUserSettings({ conf: accounts.buildUserSettings() });
+									account.saveUserSettings();
 								}
 							});
 						}
@@ -121,7 +119,7 @@ class PurpleBox {
 		}
 		return injectScript(tab_id, 'dist/purplebox.js', 'dist/css/purplebox_styles.css', 'document_start').then(() => {
 			if (!this.channelsSupported) {
-				sendMessage(tab_id, 'createBox', this.createBoxParams, (response) => {
+				sendMessage(tab_id, 'createBox', this.createBoxParams, () => {
 					if (chrome.runtime.lastError) {
 						log('createBox sendMessage error', chrome.runtime.lastError);
 						return false;
@@ -138,7 +136,7 @@ class PurpleBox {
 	}
 
 	/**
-	 * Update the purple box with new bugs. Called from 'processBug'
+	 * Update the purple box with new bugs. Called from EventHandlers
 	 * @param  {number} 	tab_id		tab id
 	 * @param  {number} 	app_id		tracker id
 	 */
@@ -146,7 +144,7 @@ class PurpleBox {
 		const tab = tabInfo.getTabInfo(tab_id);
 		const apps = foundBugs.getApps(tab_id, true, tab.url, app_id);
 		// prefetching and purplebox are already checked in background.js
-		if (!apps || apps.length === 0 || globals.EXCLUDES.includes(tab.host)) {
+		if (!apps || apps.length === 0 || globals.EXCLUDES.includes(tab.host) || globals.BROWSER_INFO.os === 'android') {
 			return false;
 		}
 
@@ -163,11 +161,12 @@ class PurpleBox {
 		}
 		sendMessage(tab_id, 'updateBox', {
 			apps
-		}, (response) => {
+		}, () => {
 			if (chrome.runtime.lastError) {
 				log('updateBox sendMessage failed', chrome.runtime.lastError, tab);
 			}
 		});
+		return true;
 	}
 
 	/**
@@ -186,9 +185,6 @@ class PurpleBox {
 			}
 		}
 		tabInfo.setTabInfo(tab_id, 'purplebox', false);
-
-
-		return true;
 	}
 }
 

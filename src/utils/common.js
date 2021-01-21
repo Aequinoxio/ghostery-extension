@@ -7,22 +7,68 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-console: 0 no-bitwise: 0 */
-
 // DO NOT IMPORT MODULES TO THIS FILE
 
-const DEBUG = (chrome.runtime.getManifest().debug || false);
-const LOG = chrome.runtime.getManifest().log || false;
+// Private variable that controls whether calls to log() produce the requested console output or do nothing
+let _shouldLog = chrome.runtime.getManifest().debug || false;
+
+/**
+ * Report whether logging is active
+ * @memberOf BackgroundUtils
+ *
+ * @return {Boolean}					True if logging is active and false otherwise
+ */
+export function isLog() {
+	return _shouldLog;
+}
+
+/**
+ * Activate / deactivate logging
+ * Allows modules like the console debugger to override the manifest debug setting
+ * @memberOf BackgroundUtils
+ *
+ * @param  {Boolean} shouldActivate		Whether logging should be activated or deactivated. Optional; defaults to true
+ *
+ * @return {undefined}					No explicit return value
+ */
+export function activateLog(shouldActivate = true) {
+	_shouldLog = shouldActivate;
+}
+
+/**
+ * Log to console regardless of log settings
+ * @memberOf BackgroundUtils
+ *
+ * @param  {array} args 	ES6 Rest parameter
+ *
+ * @return {boolean}		Always true
+ */
+export function alwaysLog(...args) {
+	// check for error messages
+	const hasErrors = args.toString().toLowerCase().includes('error');
+	// add timestamp to first position
+	args.unshift(`${(new Date()).toLocaleTimeString()}\t`);
+
+	if (hasErrors) {
+		console.error(...args); // eslint-disable-line no-console
+		console.trace(); // eslint-disable-line no-console
+	} else {
+		console.log(...args); // eslint-disable-line no-console
+	}
+	return true;
+}
 
 /**
  * Custom Debug Logger.
+ * Unliked alwaysLog, only logs if logging is turned on
+ * through the manifest and/or GhosteryDebugger
  * @memberOf BackgroundUtils
  *
  * @param  {array} args 	ES6 Rest parameter
@@ -30,20 +76,11 @@ const LOG = chrome.runtime.getManifest().log || false;
  * @return {boolean}  		false if disabled, otherwise true
  */
 export function log(...args) {
-	if (!LOG) {
+	if (!_shouldLog) {
 		return false;
 	}
-	// check for error messages
-	const hasErrors = args.toString().toLowerCase().includes('error');
-	// add timestamp to first position
-	args.unshift(`${(new Date()).toLocaleTimeString()}\t`);
 
-	if (hasErrors) {
-		console.error(...args);
-	} else {
-		console.log(...args);
-	}
-	return true;
+	return alwaysLog(...args);
 }
 
 /**
@@ -150,30 +187,11 @@ export function hashCode(str) {
 
 	for (i = 0; i < str.length; i++) {
 		character = str.charCodeAt(i);
-		hash = ((hash << 5) - hash) + character;
-		hash &= hash;
+		hash = ((hash << 5) - hash) + character; // eslint-disable-line no-bitwise
+		hash &= hash; // eslint-disable-line no-bitwise
 	}
 
 	return hash;
-}
-
-/**
- * Generator which makes object iterable with for...of loop
- * @memberOf BackgroundUtils
- *
- * @param  {Object} 	object over which own enumerable properties we want to iterate
- * @return {Object}		Generator object
- */
-
-export function* objectEntries(obj) {
-	const propKeys = Object.keys(obj);
-
-	for (const propKey of propKeys) {
-		// `yield` returns a value and then pauses
-		// the generator. Later, execution continues
-		// where it was previously paused.
-		yield [propKey, obj[propKey]];
-	}
 }
 
 /**
@@ -184,8 +202,8 @@ export function* objectEntries(obj) {
  * @return {string}			unescaped str
  */
 function _base64urlUnescape(str) {
-	str += new Array(5 - str.length % 4).join('='); // eslint-disable-line no-param-reassign
-	return str.replace(/\-/g, '+').replace(/_/g, '/');
+	const returnStr = str + new Array(5 - (str.length % 4)).join('=');
+	return returnStr.replace(/-/g, '+').replace(/_/g, '/');
 }
 
 /**
@@ -196,7 +214,7 @@ function _base64urlUnescape(str) {
  * @return {string}			decoded string
  */
 function _base64urlDecode(str) {
-	return new Buffer(_base64urlUnescape(str), 'base64').toString(); // eslint-disable-line no-buffer-constructor
+	return Buffer.from(_base64urlUnescape(str), 'base64').toString();
 }
 
 /**

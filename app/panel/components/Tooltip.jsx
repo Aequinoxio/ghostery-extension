@@ -4,17 +4,18 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
+import React from 'react';
+import ClassNames from 'classnames';
+
 /**
- * @class Implements tooltip component used throughout the views.
+ * @class Implements a Tooltip component that is used in many panel views.
  * @memberof PanelClasses
  */
 class Tooltip extends React.Component {
@@ -23,17 +24,23 @@ class Tooltip extends React.Component {
 		this.state = {
 			show: false,
 		};
+
+		// Event Bindings
+		this.delayHover = this.delayHover.bind(this);
+		this.enter = this.enter.bind(this);
+		this.leave = this.leave.bind(this);
 	}
+
 	/**
 	 * Lifecycle event. Set listeners.
 	 */
 	componentDidMount() {
-		// eslint-disable-next-line react/no-find-dom-node
-		this.parentNode = ReactDOM.findDOMNode(this).parentNode;
+		this.parentNode = this.node.parentNode;
 		this.parentNode.addEventListener('mouseenter', this.delayHover);
 		this.parentNode.addEventListener('mouseleave', this.leave);
 		this.parentNode.addEventListener('click', this.leave);
 	}
+
 	/**
 	 * Lifecycle event. Remove listeners.
 	 */
@@ -42,44 +49,63 @@ class Tooltip extends React.Component {
 		this.parentNode.removeEventListener('mouseleave', this.leave);
 		this.parentNode.removeEventListener('click', this.leave);
 	}
+
 	/**
-	 * Set 1 sec delay for showing the tooltip.
+	 * Implements mouseenter. Sets a delay for showing the tooltip with a default of 1 second.
 	 */
-	delayHover = (e) => {
+	delayHover() {
+		const { delay } = this.props;
+		const delayType = typeof delay;
+		const timerDelay = (delayType === 'number' || delayType === 'string') ? +delay : 1000;
 		this.delay = setTimeout(() => {
 			this.enter();
-		}, 1000);
+		}, timerDelay);
 	}
+
 	/**
-	 * Set tooltip show state.
+	 * Sets the state for Show.
 	 */
-	enter = () => {
+	enter() {
+		const { disabled, showNotification, alertText } = this.props;
 		this.setState({ show: true });
+		if (disabled && showNotification && alertText) {
+			showNotification({ text: alertText, classes: 'warning', filter: 'tooltip' });
+		}
 	}
+
 	/**
-	 * Implement handler for mouseleave event and hide the tooltip.
+	 * Implements mouseleave.
 	 */
-	leave = (e) => {
+	leave() {
 		clearTimeout(this.delay);
 		this.setState({ show: false });
 	}
+
 	/**
-	 * Render Tooltip component.
-	 * @return {ReactComponent} 	ReactComponent instance
+	 * React's required render function. Returns JSX
+	 * @return {JSX} JSX for rendering the Tooltip component
 	 */
 	render() {
+		const {
+			theme, position, header, body
+		} = this.props;
+		const { show } = this.state;
+		const compClassNames = ClassNames({
+			'dark-theme': theme === 'dark',
+		});
+
 		return (
-			<span>
-				{this.state.show &&
-					<span className={`tooltip-content ${this.props.position}`}>
-						{this.props.header &&
-							<div className="tooltip-header">{this.props.header}</div>
+			<span ref={(node) => { this.node = node; }} className={compClassNames}>
+				{show && (
+					<span className={`tooltip-content ${position}`}>
+						{header &&
+						<div className="tooltip-header">{header}</div>
 						}
-						{this.props.body &&
-							<div className="tooltip-body">{this.props.body}</div>
+						{body &&
+						<div className="tooltip-body">{body}</div>
 						}
 					</span>
-				}
+				)}
 			</span>
 		);
 	}

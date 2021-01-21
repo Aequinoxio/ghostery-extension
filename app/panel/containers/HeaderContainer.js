@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,6 +16,7 @@ import { withRouter } from 'react-router-dom';
 import { bindActionCreators } from 'redux';
 import Header from '../components/Header';
 import * as actions from '../actions/PanelActions'; // get shared actions from Panel
+import { logout } from '../../Account/AccountActions';
 /**
  * Map redux store state properties to Header component own properties.
  * @memberOf PanelContainers
@@ -25,14 +26,13 @@ import * as actions from '../actions/PanelActions'; // get shared actions from P
  * @todo  We are not using ownProps, so we better not specify it explicitly,
  * in this case it won't be passed by React (see https://github.com/reactjs/react-redux/blob/master/docs/api.md).
  */
-const mapStateToProps = (state, ownProps) => Object.assign({}, state.header, {
+const mapStateToProps = state => ({
+	...state.account,
 	// get properties from panel redux store
-	email: state.panel.email,
+	is_expanded: state.panel.is_expanded,
 	is_expert: state.panel.is_expert,
-	is_validated: state.panel.is_validated,
 	language: state.panel.language,
-	logged_in: state.panel.logged_in,
-	tab_id: state.panel.tab_id,
+	tab_id: state.panel.tab_id
 });
 /**
  * Bind Header component action creators using Redux's bindActionCreators. Pass updated match, location, and history props to the wrapped component.
@@ -41,7 +41,7 @@ const mapStateToProps = (state, ownProps) => Object.assign({}, state.header, {
  * @param  {Object} 	ownProps  Header component own props
  * @return {function}          	  to be used as an argument in redux connect call
  */
-const mapDispatchToProps = (dispatch, ownProps) => ({ actions: bindActionCreators(actions, dispatch) });
+const mapDispatchToProps = dispatch => ({ actions: bindActionCreators(Object.assign(actions, { logout }), dispatch) });
 /**
  * Connects Header component to the Redux store.
  * @memberOf PanelContainers

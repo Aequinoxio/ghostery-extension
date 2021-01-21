@@ -7,14 +7,12 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
-
-/* eslint no-param-reassign: 0 */
 
 import { log } from '../utils/common';
 /**
@@ -30,11 +28,12 @@ class Dispatcher {
 
 	// subscribe
 	on(event, handler, context) {
+		let c = context;
 		log('dispatcher.on called from', event);
-		if (typeof context === 'undefined') {
-			context = handler;
+		if (typeof c === 'undefined') {
+			c = handler;
 		}
-		this.handlers.set(event, handler.bind(context));
+		this.handlers.set(event, handler.bind(c));
 	}
 
 	// publish

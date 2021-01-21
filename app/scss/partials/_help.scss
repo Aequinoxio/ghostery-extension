@@ -1,19 +1,20 @@
 /**
- * Help & About Panel Sass
+ * Help, About and Subscriber Panel Sass
  *
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  * 
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-#content-help, #content-about {
+#content-help, #content-about, .content-subscription {
 	padding: 20px 15px;
 	h1 {
+		margin-top: 0.5rem;
 		font-size: 18px;
 		line-height: 24px;
 		font-weight: 300;

@@ -4,22 +4,18 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
+import React from 'react';
 import { Route } from 'react-router-dom';
+import ClassNames from 'classnames';
 import DetailMenu from './DetailMenu';
-import Summary from '../containers/SummaryContainer';
 import Blocking from '../containers/BlockingContainer';
-import History from './History';
-import Performance from './Performance';
-import Rewards from './Rewards';
-import Premium from './Premium';
 /**
  * @class Implement wrapper of the detailed (expert) mode view.
  * @memberOf PanelClasses
@@ -30,27 +26,21 @@ class Detail extends React.Component {
 
 		// event bindings
 		this.toggleExpanded = this.toggleExpanded.bind(this);
-	}
-	/**
-	 * Lifecycle event
-	 */
-	componentWillMount() {
-		// trigger default tab (aka route)
-		this.props.history.push('/detail/blocking');
+
+		// set default tab / route based on how we got to this view
+		props.history.push('/detail/blocking');
 	}
 
 	BlockingComponent = () => (<Blocking />);
-	HistoryComponent = () => (<History />);
-	PerformanceComponent = () => (<Performance />);
-	RewardsComponent = () => (<Rewards />);
-	PremiumComponent = () => (<Premium />);
 
 	/**
 	 * Click "expertTab" to enable detailed (expert) mode. Trigger action.
 	 */
 	toggleExpanded() {
-		this.props.actions.toggleExpanded();
+		const { actions } = this.props;
+		actions.toggleExpanded();
 	}
+
 	/**
 	 * Render detailed view wrapper. Part of it is footer
 	 * menu allowing to switch between blocking view and one of the
@@ -59,19 +49,27 @@ class Detail extends React.Component {
 	 * @return {ReactComponent}   ReactComponent instance
 	 */
 	render() {
+		const { is_expanded, user } = this.props;
+		const condensedToggleClassNames = ClassNames('condensed-toggle', {
+			condensed: is_expanded,
+		});
+
+		const activeTab = 'blocking';
+		const contentDetailsClassNames = ClassNames({
+			expanded: is_expanded,
+		});
+
 		return (
 			<div className="detail-wrap">
-				<div id="content-detail" className={(this.props.is_expanded ? 'expanded' : '')}>
-					<div className={`expertTab row align-middle align-right ${this.props.is_expanded ? 'expanded' : ''}`} onClick={this.toggleExpanded}>
-						<div className="dash" />
-						<div className="moon" />
+				<div id="content-detail" className={contentDetailsClassNames}>
+					<div className="toggle-bar">
+						<div className={condensedToggleClassNames} onClick={this.toggleExpanded} />
 					</div>
 					<Route path="/detail/blocking" render={this.BlockingComponent} />
-					<Route path="/detail/history" render={this.HistoryComponent} />
-					<Route path="/detail/performance" render={this.PerformanceComponent} />
-					<Route path="/detail/rewards" render={this.RewardsComponent} />
-					<Route path="/detail/premium" render={this.PremiumComponent} />
-					<DetailMenu />
+					<DetailMenu
+						plusAccess={user && user.plusAccess}
+						activeTab={activeTab}
+					/>
 				</div>
 			</div>
 		);

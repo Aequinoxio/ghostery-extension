@@ -4,218 +4,176 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2020 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-// depenencies
-const glob = require('glob');
+// dependencies
 const path = require('path');
 const webpack = require('webpack');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const WebpackShellPlugin = require('webpack-shell-plugin');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
-const spawnSync = require('child_process').spawnSync;
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 // constants
 const BUILD_DIR = path.resolve(__dirname, 'dist');
-const CLIQZ_DIR = path.resolve(__dirname, 'cliqz');
 const SRC_DIR = path.resolve(__dirname, 'src');
+const SHARED_COMP_DIR = path.resolve(__dirname, 'app/shared-components');
 const PANEL_DIR = path.resolve(__dirname, 'app/panel');
-const SETUP_DIR = path.resolve(__dirname, 'app/setup');
+const PANEL_ANDROID_DIR = path.resolve(__dirname, 'app/panel-android');
+const HUB_DIR = path.resolve(__dirname, 'app/hub');
 const LICENSES_DIR = path.resolve(__dirname, 'app/licenses');
 const SASS_DIR = path.resolve(__dirname, 'app/scss');
 const CONTENT_SCRIPTS_DIR = path.resolve(__dirname, 'app/content-scripts');
 const RM = (process.platform === 'win32') ? 'powershell remove-item' : 'rm';
 
-// webpack plugins
-const extractSass = new ExtractTextPlugin({
-	filename: 'css/[name].css',
-	disable: false
-});
-
-// @TODO: Refactor so this isn't necessary
-const cleanTmpStyleFiles = new WebpackShellPlugin({
-	onBuildEnd: [
-		`${RM} ./dist/foundation.js`,
-		`${RM} ./dist/licenses.js`,
-		`${RM} ./dist/panel.js`,
-		`${RM} ./dist/panel_android.js`,
-		`${RM} ./dist/purplebox_styles.js`,
-		`${RM} ./dist/setup.js`,
-		`${RM} ./dist/ghostery_dot_com_css.js`
-	]
-});
-
-const t = function (messageName, substitutions) {
-	return chrome.i18n.getMessage(messageName, substitutions);
-};
-
-const lintOnChange = function() {
-	// @TODO: Why it fails on Windows?
-	if (process.argv.includes('--env.nolint') ||
-		process.platform === 'win32') {
-		return;
-	}
-	const args = ['run', 'lint'];
-	if (process.argv.includes('--env.fix')) {
-		args.push('--', '--fix')
-	}
-	lint = spawnSync('npm', args, { stdio: 'inherit'});
-	if (lint.status !== 0) {
-		process.exit(lint.status);
-	}
-};
-
-lintOnChange.prototype.apply = function(compiler) {
-	if (process.argv.includes('--env.prod') || process.argv.includes('--env.nolint')) {
-		return;
-	}
-	compiler.plugin('emit', function(compilation, callback) {
-		let changedFiles = Object.keys(compilation.fileTimestamps).filter(function(watchfile) {
-			return (this.prevTimestamps[watchfile] || this.startTime) < (compilation.fileTimestamps[watchfile] || Infinity);
-		}.bind(this));
-
-		changedFiles = changedFiles.filter((file) => {
-			return file.indexOf('.js') !== -1;
-		});
-
-		if(changedFiles.length > 0) {
-			const args = ['run', 'lint.raw', '--', ...changedFiles];
-			if (process.argv.includes('--env.fix')) {
-				args.push('--fix')
-			}
-			lint = spawnSync('npm', args, { stdio: 'inherit'});
-		}
-
-		this.startTime = Date.now();
-		this.prevTimestamps = {};
-
-		callback();
-	}.bind(this));
-};
-
-const buildPlugins = [
-	new CleanWebpackPlugin('./dist/*'),
-	new webpack.IgnorePlugin(/(locale)/, /node_modules.+(moment)/), // fix for Error: Can't resolve './locale'
-	new lintOnChange(),
-	extractSass,
-	cleanTmpStyleFiles,
-	new webpack.DefinePlugin({
-		't': t,
-	}),
-	new webpack.DefinePlugin({
-		'process.env': {
-			'NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-		}
-	}),
-	new webpack.BannerPlugin({
-		banner: "if(typeof browser!=='undefined'){chrome=browser;}",
-		raw: true,
-		include: /\.js$/
-	}),
-	new webpack.optimize.CommonsChunkPlugin({
-		name: "browser-core",
-		filename: "browser-core.js",
-		chunks: ['background'],
-		minChunks: function (module) {
-			return module.context
-			&& module.context.includes('browser-core');
-		}
-	}),
-	new webpack.optimize.CommonsChunkPlugin({
-		name: "vendor",
-		chunks: ['background', 'browser-core'],
-		minChunks: function (module) {
-			return module.context
-				&& module.context.includes('node_modules')
-				&& !module.context.includes('browser-core');
-		}
-	}),
-	new webpack.optimize.CommonsChunkPlugin({
-		name: "vendor-panel",
-		chunks: ['panel_react'],
-		minChunks: function (module) {
-			return module.context && module.context.includes("node_modules");
-		}
-	}),
-	new webpack.SourceMapDevToolPlugin({
-		filename: "sourcemaps/[file].map",
-		include: ["panel_react.js", "browser-core.js", "background.js"]
-	})
-];
-
-// configs
-const config = {
+module.exports = {
+	devtool: 'none', // source-maps
+	performance: {
+		hints: false // notify of assets over 250kb
+	},
+	resolve: {
+		symlinks: false, // allow module resolution with `npm link`
+		extensions: ['.js', '.jsx'] // allow leaving off file extension when importing
+	},
+	watchOptions: {
+		ignored: /node_modules/
+	},
 	entry: {
-		background: [SRC_DIR + '/background.js'],
-		blocked_redirect: [CONTENT_SCRIPTS_DIR + '/blocked_redirect.js'],
-		click_to_play: [CONTENT_SCRIPTS_DIR + '/click_to_play.js'],
-		ghostery_dot_com: [CONTENT_SCRIPTS_DIR + '/ghostery_dot_com.js'],
-		notifications: [CONTENT_SCRIPTS_DIR + '/notifications.js'],
-		page_performance: [CONTENT_SCRIPTS_DIR + '/page_performance.js'],
-		platform_pages: [CONTENT_SCRIPTS_DIR + '/platform_pages.js'],
-		purplebox: [CONTENT_SCRIPTS_DIR + '/purplebox.js'],
-		content_script_bundle: [CLIQZ_DIR + '/core/content-script.bundle.js'],
-		panel_react: [PANEL_DIR + '/index.jsx'],
-		setup_react: [SETUP_DIR + '/index.jsx'],
-		licenses_react: [LICENSES_DIR + '/Licenses.jsx', LICENSES_DIR + '/License.jsx'],
-		foundation: [SASS_DIR + '/vendor/foundation.scss'],
-		ghostery_dot_com_css: [SASS_DIR + '/ghostery_dot_com.scss'],
-		panel: [SASS_DIR + '/panel.scss'],
-		panel_android: [SASS_DIR + '/panel_android.scss'],
-		purplebox_styles: [SASS_DIR + '/purplebox.scss'],
-		setup: [SASS_DIR + '/setup.scss'],
-		licenses: [SASS_DIR + '/licenses.scss'],
+		account_pages: [`${CONTENT_SCRIPTS_DIR}/account_pages.js`],
+		background: [`${SRC_DIR}/background.js`],
+		blocked_redirect: [`${CONTENT_SCRIPTS_DIR}/blocked_redirect.js`],
+		checkout_pages: [`${CONTENT_SCRIPTS_DIR}/checkout_pages.js`],
+		click_to_play: [`${CONTENT_SCRIPTS_DIR}/click_to_play.js`],
+		content_script_bundle: [`${CONTENT_SCRIPTS_DIR}/content_script_bundle.js`],
+		ghostery_dot_com: [`${CONTENT_SCRIPTS_DIR}/ghostery_dot_com.js`],
+		hub_react: [`${HUB_DIR}/index.jsx`],
+		licenses_react: [`${LICENSES_DIR}/Licenses.jsx`, `${LICENSES_DIR}/License.jsx`],
+		notifications: [`${CONTENT_SCRIPTS_DIR}/notifications.js`],
+		page_performance: [`${CONTENT_SCRIPTS_DIR}/page_performance.js`],
+		panel_android_react: [`${PANEL_ANDROID_DIR}/index.jsx`],
+		panel_react: [`${PANEL_DIR}/index.jsx`],
+		purplebox: [`${CONTENT_SCRIPTS_DIR}/purplebox.js`],
+		shared_comp_react: [`${SHARED_COMP_DIR}/index.js`],
+		// Sass
+		foundation: [`${SASS_DIR}/vendor/foundation.scss`],
+		foundation_hub: [`${SASS_DIR}/vendor/foundation_hub.scss`],
+		ghostery_dot_com_css: [`${SASS_DIR}/ghostery_dot_com.scss`],
+		hub: [`${SASS_DIR}/hub.scss`],
+		licenses: [`${SASS_DIR}/licenses.scss`],
+		panel: [`${SASS_DIR}/panel.scss`],
+		panel_android: [`${SASS_DIR}/panel_android.scss`],
+		purplebox_styles: [`${SASS_DIR}/purplebox.scss`],
 	},
 	output: {
 		filename: '[name].js',
 		path: BUILD_DIR
 	},
-	resolve: {
-		symlinks: false,
-		extensions: ['.js', '.jsx']
-	},
-	plugins: buildPlugins,
+	plugins: [
+		// Clear './dist' folder
+		new CleanWebpackPlugin({
+			verbose: false,
+		}),
+		// Ignore all locale files of moment.js
+		new webpack.IgnorePlugin(/locale/, /node_modules.+(moment)/),
+		// Extract CSS into individual files
+		new MiniCssExtractPlugin({
+			filename: 'css/[name].css'
+		}),
+		// Clear duplicate js files created from CSS extraction
+		new WebpackShellPlugin({
+			onBuildExit: [
+				`${RM} ./dist/foundation.js`,
+				`${RM} ./dist/foundation_hub.js`,
+				`${RM} ./dist/ghostery_dot_com_css.js`,
+				`${RM} ./dist/hub.js`,
+				`${RM} ./dist/licenses.js`,
+				`${RM} ./dist/panel.js`,
+				`${RM} ./dist/panel_android.js`,
+				`${RM} ./dist/purplebox_styles.js`,
+			]
+		}),
+		// Create global `t` function for i18n
+		new webpack.DefinePlugin({
+			t: function(messageName, substitutions) {
+				return chrome.i18n.getMessage(messageName, substitutions);
+			}
+		}),
+		// Set `chrome` global for browsers that don't support it
+		new webpack.BannerPlugin({
+			banner: 'if(typeof browser!=="undefined"){chrome=browser;}',
+			raw: true,
+			include: /\.js$/
+		}),
+	],
 	module: {
 		rules: [
 			{
-				test: /\.(html)$/,
+				test: /\.html$/,
 				use: {
-					loader: 'html-loader'
+					loader: 'underscore-template-loader'
 				}
-			},{
-				test : /\.jsx?/,
-				include : [PANEL_DIR, SETUP_DIR, LICENSES_DIR],
-				use: {
-					loader: 'babel-loader'
-				}
-			},{
-				test: /\.scss?/,
-				use: extractSass.extract({
-						use: [{
-							loader: 'css-loader'
-						}, {
-							loader: 'sass-loader',
-							options: {
-								includePaths: [path.resolve(__dirname, 'node_modules/foundation-sites/scss')]
+			}, {
+				test: /\.(js|jsx)$/,
+				include: [SHARED_COMP_DIR, PANEL_ANDROID_DIR, PANEL_DIR, HUB_DIR, LICENSES_DIR, CONTENT_SCRIPTS_DIR],
+				exclude: /node_modules/,
+				use: [
+					{
+						loader: 'babel-loader',
+						options: {
+							envName: 'app',
+						}
+					},
+					'eslint-loader'
+				]
+			}, {
+				test: /\.js$/,
+				include: [SRC_DIR],
+				exclude: /node_modules/,
+				use: [
+					{
+						loader: 'babel-loader',
+						options: {
+							envName: 'src',
+						}
+					},
+					'eslint-loader'
+				]
+			}, {
+				test: /\.scss$/,
+				resolve: {
+					extensions: ['.scss', '.sass']
+				},
+				use: [
+					MiniCssExtractPlugin.loader,
+					'css-loader',
+					{
+						loader: 'sass-loader',
+						options: {
+							sassOptions: {
+								includePaths: [
+									path.resolve(__dirname, 'node_modules/foundation-sites/scss'),
+									path.resolve(__dirname, 'app/scss'),
+								]
 							}
-						}],
-						// use style-loader in development
-						fallback: 'style-loader'
-				})
-			},{
+						},
+					}
+				]
+			}, {
 				test: /\.svg$/,
 				loader: 'svg-url-loader'
-			},{
+			}, {
 				test: /\.(png|woff|woff2|eot|ttf)$/,
-				loader: 'url-loader?limit=100000'
+				use: {
+					loader: 'url-loader',
+					options: {
+						limit: 100000
+					}
+				}
 			}
 		]
 	}
 };
-
-module.exports = config;

@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,7 +16,8 @@ import { withRouter } from 'react-router-dom';
 import { bindActionCreators } from 'redux';
 import Panel from '../components/Panel';
 import * as panelActions from '../actions/PanelActions';
-import { filterTrackers } from '../actions/SummaryActions';
+import { filterTrackers, updateSummaryData } from '../actions/SummaryActions';
+import { updateBlockingData } from '../actions/BlockingActions';
 /**
  * Map redux store state properties to Panel view component own properties.
  * @memberOf PanelContainers
@@ -26,10 +27,13 @@ import { filterTrackers } from '../actions/SummaryActions';
  * @todo  We are not using ownProps, so we better not specify it explicitly,
  * in this case it won't be passed by React (see https://github.com/reactjs/react-redux/blob/master/docs/api.md).
  */
-const mapStateToProps = (state, ownProps) => Object.assign({}, state.panel, state.drawer, {
+const mapStateToProps = state => ({
+	...state.panel,
+	...state.drawer,
+	...state.account,
 	paused_blocking: state.summary.paused_blocking,
 	sitePolicy: state.summary.sitePolicy,
-	trackerCounts: state.summary.trackerCounts,
+	trackerCounts: state.summary.trackerCounts
 });
 /**
  * Bind Panel view component action creators using Redux's bindActionCreators
@@ -38,8 +42,10 @@ const mapStateToProps = (state, ownProps) => Object.assign({}, state.panel, stat
  * @param  {Object} 	ownProps  Panel view component own props
  * @return {function}          	  to be used as an argument in redux connect call
  */
-const mapDispatchToProps = (dispatch, ownProps) => ({
-	actions: bindActionCreators(Object.assign(panelActions, { filterTrackers }), dispatch),
+const mapDispatchToProps = dispatch => ({
+	actions: bindActionCreators({
+		...panelActions, filterTrackers, updateSummaryData, updateBlockingData
+	}, dispatch),
 });
 /**
  * Connects Panel component to the Redux store. Pass updated match, location, and history props to the wrapped component.

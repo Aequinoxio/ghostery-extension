@@ -4,14 +4,12 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
-
-/* eslint no-use-before-define: 0 */
 
 import bugDb from '../classes/BugDb';
 import conf from '../classes/Conf';
@@ -20,43 +18,6 @@ import { log } from './common';
 
 // ALL APIS IN THIS FILE ARE PERFORMANCE-CRITICAL
 
-/**
- * Determine if web request qualifies as a bug.
- * @memberOf BackgroundUtils
- *
- * @param {string} 	src		 	url of the request
- * @param {string}	tab_url	 	url of the page
- *
- * @return {int|boolean} 		bug id or false
- */
-export function isBug(src, tab_url) {
-	const { db } = bugDb;
-	const processedSrc = processUrl(src);
-	let	found = false;
-
-
-	found =
-		// pattern classification 2: check host+path hash
-		_matchesHost(db.patterns.host_path, processedSrc.host, processedSrc.path) ||
-		// class 1: check host hash
-		_matchesHost(db.patterns.host, processedSrc.host) ||
-		// class 3: check path hash
-		_matchesPath(processedSrc.path) ||
-		// class 4: check regex patterns
-		_matchesRegex(processedSrc.host_with_path);
-
-	if (typeof tab_url !== 'undefined') {
-		// check firstPartyExceptions
-		if (conf.ignore_first_party &&
-			found !== false &&
-			db.firstPartyExceptions[found] &&
-			fuzzyUrlMatcher(tab_url, db.firstPartyExceptions[found])) {
-			return false;
-		}
-	}
-
-	return found;
-}
 /**
  * Determine if a url matches an entry in an array urls.
  * The matching is permissive.
@@ -68,10 +29,10 @@ export function isBug(src, tab_url) {
  * @return {boolean} 			true if match is found, false otherwise
  */
 export function fuzzyUrlMatcher(url, urls) {
-	const	parsed = processUrl(url);
-	let tab_host = parsed.host;
+	const parsed = processUrl(url.toLowerCase());
+	let tab_host = parsed.hostname;
 
-	const tab_path = parsed.path;
+	const tab_path = parsed.pathname ? parsed.pathname.substring(1) : '';
 
 	if (tab_host.startsWith('www.')) {
 		tab_host = tab_host.slice(4);
@@ -79,7 +40,6 @@ export function fuzzyUrlMatcher(url, urls) {
 
 	for (let i = 0; i < urls.length; i++) {
 		const { host, path } = processFpeUrl(urls[i]);
-
 		if (host === tab_host) {
 			if (!path) {
 				log(`[fuzzyUrlMatcher] host (${host}) match`);
@@ -99,6 +59,7 @@ export function fuzzyUrlMatcher(url, urls) {
 	}
 	return false;
 }
+
 /**
  * Determine if a path part of an url matches to a path property
  * of a node in an array of json nodes with paths.
@@ -129,6 +90,7 @@ function _matchesHostPath(roots, src_path) {
 
 	return false;
 }
+
 /**
  * Use host and path parts of a url to traverse database trie node
  * looking for matching parts. Reaching the leaf would yeild bug id.
@@ -193,7 +155,9 @@ function _matchesHost(root, src_host, src_path) {
 function _matchesRegex(src) {
 	const regexes = bugDb.db.patterns.regex;
 
-	for (const bug_id in regexes) {
+	const bug_ids = Object.keys(regexes);
+	for (let i = 0; i < bug_ids.length; i++) {
+		const bug_id = bug_ids[i];
 		if (regexes[bug_id].test(src)) {
 			return +bug_id;
 		}
@@ -201,24 +165,67 @@ function _matchesRegex(src) {
 
 	return false;
 }
+
 /**
- * Match a path part of a url agains the path property of database patterns section.
+ * Match a path part of a url against the path property of database patterns section.
  * @private
  *
  * @param {string} 	src_path	path part of an url
  *
  * @return {int|boolean} 		bug id or false if the match was not found
- */ function _matchesPath(src_path) {
+ */
+function _matchesPath(src_path) {
 	const paths = bugDb.db.patterns.path;
 
 	// NOTE: we re-add the "/" in order to match patterns that include "/"
 	const srcPath = `/${src_path}`;
 
-	for (const path in paths) {
+	const pathArr = Object.keys(paths);
+	for (let i = 0; i < pathArr.length; i++) {
+		const path = pathArr[i];
 		if (srcPath.includes(path)) {
 			return paths[path];
 		}
 	}
 
 	return false;
+}
+
+/**
+ * Determine if web request qualifies as a bug.
+ * @memberOf BackgroundUtils
+ *
+ * @param {string} 	src		 	url of the request
+ * @param {string}	tab_url	 	url of the page
+ *
+ * @return {int|boolean} 		bug id or false
+ */
+export function isBug(src, tab_url) {
+	const { db } = bugDb;
+	const processedSrc = processUrl(src.toLowerCase());
+	let	found = false;
+
+	const path = processedSrc.pathname ? processedSrc.pathname.substring(1) : '';
+
+	found =
+		// pattern classification 2: check host+path hash
+		_matchesHost(db.patterns.host_path, processedSrc.hostname, path) ||
+		// class 1: check host hash
+		_matchesHost(db.patterns.host, processedSrc.hostname) ||
+		// class 3: check path hash
+		_matchesPath(path) ||
+		// class 4: check regex patterns
+		_matchesRegex(processedSrc.host + processedSrc.pathname);
+
+	if (typeof tab_url !== 'undefined') {
+		// check firstPartyExceptions
+		if (conf.ignore_first_party &&
+			found !== false &&
+			db.firstPartyExceptions[found] &&
+			fuzzyUrlMatcher(tab_url, db.firstPartyExceptions[found])) {
+			return false;
+		}
+	}
+
+	return found;
 }

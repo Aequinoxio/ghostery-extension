@@ -4,216 +4,285 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
+import React from 'react';
 import Categories from './Blocking/Categories';
 import BlockingHeader from './Blocking/BlockingHeader';
-import NotScanned from './NotScanned';
+import NotScanned from './BuildingBlocks/NotScanned';
+import DynamicUIPortContext from '../contexts/DynamicUIPortContext';
 import { updateSummaryBlockingCount } from '../utils/blocking';
+
 /**
  * @class Implement Blocking View in the right
  * pane of the detailed (expert) panel.
  * @memberof PanelClasses
  */
 class Blocking extends React.Component {
+	static contextType = DynamicUIPortContext;
+
 	constructor(props) {
 		super(props);
+
+		// event bindings
+		this.handlePortMessage = this.handlePortMessage.bind(this);
+
+		const classes = Blocking.buildBlockingClasses(this.props);
+		const disableBlocking = Blocking.computeSiteNotScanned(this.props);
+
 		this.state = {
-			blockingClasses: '',
-			disableBlocking: false,
+			blockingClasses: classes.join(' '),
+			disableBlocking
 		};
 	}
+
 	/**
 	 * Lifecycle event
 	 */
-	componentWillMount() {
-		this.updateBlockingClasses(this.props);
-		this.updateSiteNotScanned(this.props);
+	static getDerivedStateFromProps(nextProps) {
+		const blockingClasses = Blocking.buildBlockingClasses(nextProps).join(' ');
+		const disableBlocking = Blocking.computeSiteNotScanned(nextProps);
+		return { blockingClasses, disableBlocking };
 	}
+
 	/**
-	 * Lifecycle event
-	 */
-	componentDidMount() {
-		// We only need to fetch blocking data directly on instances where the user swtiches between
-		// simple and expert view. Otherwise, it's fetched via Panel. Here, we check for properties that
-		// are returned by PanelData::blockingView()
-		if (this.props.categories.length === 0 && typeof this.props.toggle_individual_trackers === 'undefined') {
-			this.props.actions.getBlockingData();
-		}
-	}
-	/**
-	 * Lifecycle event
-	 */
-	componentWillReceiveProps(nextProps) {
-		// triggered by update to the redux store
-		this.updateBlockingClasses(nextProps);
-		this.updateSiteNotScanned(nextProps);
-	}
-	/**
-	 * Lifecycle event
-	 */
-	componentDidUpdate(prevProps, prevState) {
-		// methods here will run after categories is assigned
-		if (prevProps.filter.type !== this.props.filter.type
-			|| prevProps.filter.name !== this.props.filter.name) {
-			this.filterTrackers();
-		}
-
-		// Update the summary blocking count whenever the blocking component updated.
-		// This will also show pending blocking changes if the panel is re-opened
-		// before a page refresh
-		updateSummaryBlockingCount(this.props.categories, this.props.actions.updateTrackerCounts);
-	}
-	/**
-	* Filter trackers by category, or reset filters. Trigger action.
-	* @param  {string} filterName
-	*/
-	setShow(filterName) {
-		const updated_categories = JSON.parse(JSON.stringify(this.props.categories)); // deep clone
-
-		updated_categories.forEach((category) => {
-			let count = 0;
-			let show = true;
-
-			// filter by donut wheel categories
-			if (filterName !== 'all' && filterName !== category.id) {
-				show = false;
-			}
-
-			category.trackers.forEach((tracker) => {
-				tracker.shouldShow = show;
-				count++;
-			});
-
-			category.num_shown = (show) ? count : 0;
-		});
-
-		this.props.actions.updateCategories(updated_categories);
-	}
-	/**
-	* Filter trackers in categories to show only
-	* those that are blocked. Trigger action.
-	*/
-	setBlockedShow() {
-		const updated_categories = JSON.parse(JSON.stringify(this.props.categories)); // deep clone
-
-		updated_categories.forEach((category) => {
-			let count = 0;
-			category.trackers.forEach((tracker) => {
-				if ((tracker.blocked && !tracker.ss_allowed) || tracker.ss_blocked) {
-					tracker.shouldShow = true;
-					count++;
-				} else {
-					tracker.shouldShow = false;
-				}
-			});
-			category.num_shown = count;
-		});
-
-		this.props.actions.updateCategories(updated_categories);
-	}
-	/**
-	* Filter trackers in categories to show only
-	* those that have warnings. Trigger action.
-	*/
-	setWarningShow() {
-		const updated_categories = JSON.parse(JSON.stringify(this.props.categories)); // deep clone
-
-		updated_categories.forEach((category) => {
-			let count = 0;
-			category.trackers.forEach((tracker) => {
-				if (tracker.warningCompatibility || tracker.warningInsecure || tracker.warningSlow) {
-					tracker.shouldShow = true;
-					count++;
-				} else {
-					tracker.shouldShow = false;
-				}
-			});
-
-			category.num_shown = count;
-		});
-
-		this.props.actions.updateCategories(updated_categories);
-	}
-	/**
-	* Filter trackers in categories to show only those
-	* that have compatibility warnings. Trigger action.
-	*/
-	setWarningCompatibilityShow() {
-		const updated_categories = JSON.parse(JSON.stringify(this.props.categories)); // deep clone
-
-		updated_categories.forEach((category) => {
-			let count = 0;
-			category.trackers.forEach((tracker) => {
-				if (tracker.warningCompatibility) {
-					tracker.shouldShow = true;
-					count++;
-				} else {
-					tracker.shouldShow = false;
-				}
-			});
-
-			category.num_shown = count;
-		});
-
-		this.props.actions.updateCategories(updated_categories);
-	}
-	/**
-	 * Filter trackers in categories to show only those that
-	 * have slow/insecure warnings. Trigger action.
-	 */
-	setWarningSlowInsecureShow() {
-		const updated_categories = JSON.parse(JSON.stringify(this.props.categories)); // deep clone
-
-		updated_categories.forEach((category) => {
-			let count = 0;
-			category.trackers.forEach((tracker) => {
-				if (tracker.warningInsecure || tracker.warningSlow) {
-					tracker.shouldShow = true;
-					count++;
-				} else {
-					tracker.shouldShow = false;
-				}
-			});
-
-			category.num_shown = count;
-		});
-
-		this.props.actions.updateCategories(updated_categories);
-	}
-	/**
-	* Set dynamic classes on .blocking-trackers. Set state.
+	* Build dynamic classes on .blocking-trackers. Return classes
 	* @param  {Object} props
 	*/
-	updateBlockingClasses(props) {
+	static buildBlockingClasses(props) {
 		const classes = [];
 
 		classes.push((props.toggle_individual_trackers) ? 'show-individual' : '');
 		classes.push((props.paused_blocking) ? 'paused' : '');
 		classes.push((props.sitePolicy) ? (props.sitePolicy === 2) ? 'trusted' : 'restricted' : '');
 
-		this.setState({ blockingClasses: classes.join(' ') });
+		return classes;
 	}
+
+	/**
+	* Compute whether a site cannot be scanned by Ghostery.
+	* @param {Object}	props	nextProps
+	*/
+	static computeSiteNotScanned(props) {
+		const { siteNotScanned, categories } = props;
+		const pageUrl = props.pageUrl || '';
+
+		if (siteNotScanned || !categories || pageUrl.search('http') === -1) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Lifecycle event
+	 */
+	componentDidMount() {
+		this._dynamicUIPort = this.context;
+		this._dynamicUIPort.onMessage.addListener(this.handlePortMessage);
+		this._dynamicUIPort.postMessage({ name: 'BlockingComponentDidMount' });
+	}
+
+	/**
+	 * Lifecycle event
+	 */
+	componentDidUpdate(prevProps) {
+		const {
+			actions, filter, categories, smartBlock, smartBlockActive
+		} = this.props;
+		// methods here will run after categories is assigned
+		if (prevProps.filter.type !== filter.type
+			|| prevProps.filter.name !== filter.name) {
+			this.filterTrackers();
+		}
+
+		// Update the summary blocking count whenever the blocking component updated.
+		// This will also show pending blocking changes if the panel is re-opened
+		// before a page refresh
+		const computedSmartBlock = (smartBlockActive && smartBlock) || { blocked: {}, unblocked: {} };
+		updateSummaryBlockingCount(categories, computedSmartBlock, actions.updateTrackerCounts);
+	}
+
+	/**
+	 * Lifecycle event
+	 */
+	componentWillUnmount() {
+		this._dynamicUIPort.postMessage({ name: 'BlockingComponentWillUnmount' });
+		this._dynamicUIPort.onMessage.removeListener(this.handlePortMessage);
+	}
+
+	/**
+	* Filter trackers by category, or reset filters. Trigger action.
+	* @param  {string} filterName
+	*/
+	setShow(filterName) {
+		const { actions, categories, unidentifiedCategory } = this.props;
+		const updated_categories = JSON.parse(JSON.stringify(categories)); // deep clone
+		const updatedUnidentifiedCategory = JSON.parse(JSON.stringify(unidentifiedCategory)); // deep clone
+
+		updated_categories.forEach((categoryEl) => {
+			let count = 0;
+			let show = true;
+
+			// filter by donut wheel categories
+			if (filterName !== 'all' && filterName !== categoryEl.id) {
+				show = false;
+			}
+
+			categoryEl.trackers.forEach((trackerEl) => {
+				trackerEl.shouldShow = show;
+				count++;
+			});
+
+			categoryEl.num_shown = (show) ? count : 0;
+		});
+
+		updatedUnidentifiedCategory.hide = !(filterName === 'all' || filterName === 'unidentified');
+		actions.updateCategories(updated_categories);
+		actions.updateUnidentifiedCategoryHide(updatedUnidentifiedCategory);
+	}
+
+	/**
+	* Filter trackers in categories to show only
+	* those that are blocked. Trigger action.
+	*/
+	setBlockedShow() {
+		const { actions, categories, smartBlockActive } = this.props;
+		const updated_categories = JSON.parse(JSON.stringify(categories)); // deep clone
+
+		updated_categories.forEach((categoryEl) => {
+			let count = 0;
+			categoryEl.trackers.forEach((trackerEl) => {
+				const isSbBlocked = smartBlockActive && trackerEl.warningSmartBlock;
+				if ((trackerEl.blocked && !trackerEl.ss_allowed) || isSbBlocked || trackerEl.ss_blocked) {
+					trackerEl.shouldShow = true;
+					count++;
+				} else {
+					trackerEl.shouldShow = false;
+				}
+			});
+			categoryEl.num_shown = count;
+		});
+
+		actions.updateCategories(updated_categories);
+	}
+
+	/**
+	* Filter trackers in categories to show only
+	* those that have warnings. Trigger action.
+	*/
+	setWarningShow() {
+		const { actions, categories } = this.props;
+		const updated_categories = JSON.parse(JSON.stringify(categories)); // deep clone
+
+		updated_categories.forEach((categoryEl) => {
+			let count = 0;
+			categoryEl.trackers.forEach((trackerEl) => {
+				if (trackerEl.warningCompatibility || trackerEl.warningInsecure || trackerEl.warningSlow) {
+					trackerEl.shouldShow = true;
+					count++;
+				} else {
+					trackerEl.shouldShow = false;
+				}
+			});
+
+			categoryEl.num_shown = count;
+		});
+
+		actions.updateCategories(updated_categories);
+	}
+
+	/**
+	* Filter trackers in categories to show only those
+	* that have compatibility warnings. Trigger action.
+	*/
+	setWarningCompatibilityShow() {
+		const { actions, categories } = this.props;
+		const updated_categories = JSON.parse(JSON.stringify(categories)); // deep clone
+
+		updated_categories.forEach((categoryEl) => {
+			let count = 0;
+			categoryEl.trackers.forEach((trackerEl) => {
+				if (trackerEl.warningCompatibility) {
+					trackerEl.shouldShow = true;
+					count++;
+				} else {
+					trackerEl.shouldShow = false;
+				}
+			});
+
+			categoryEl.num_shown = count;
+		});
+
+		actions.updateCategories(updated_categories);
+	}
+
+	/**
+	 * Filter trackers in categories to show only those that
+	 * have slow/insecure warnings. Trigger action.
+	 */
+	setWarningSlowInsecureShow() {
+		const { actions, categories } = this.props;
+		const updated_categories = JSON.parse(JSON.stringify(categories)); // deep clone
+
+		updated_categories.forEach((categoryEl) => {
+			let count = 0;
+			categoryEl.trackers.forEach((trackerEl) => {
+				if (trackerEl.warningInsecure || trackerEl.warningSlow) {
+					trackerEl.shouldShow = true;
+					count++;
+				} else {
+					trackerEl.shouldShow = false;
+				}
+			});
+
+			categoryEl.num_shown = count;
+		});
+
+		actions.updateCategories(updated_categories);
+	}
+
+	/**
+	 * Handles messages from dynamic UI port to background
+	 */
+	handlePortMessage(msg) {
+		const { actions } = this.props;
+		if (msg.to !== 'blocking' || !msg.body) { return; }
+
+		actions.updateBlockingData(msg.body);
+	}
+
+	/**
+	* Set dynamic classes on .blocking-trackers. Set state.
+	* @param  {Object} props
+	*/
+	updateBlockingClasses(props) {
+		const { blockingClasses } = this.state;
+		const classes = Blocking.buildBlockingClasses(props);
+		const joinedBlockingClasses = classes.join(' ');
+
+		if (blockingClasses !== joinedBlockingClasses) {
+			this.setState({ blockingClasses: joinedBlockingClasses });
+		}
+	}
+
 	/**
 	* Disable controls for a site that cannot be scanned by Ghostery. Set state.
 	* @param {Object}	props	nextProps
 	*/
 	updateSiteNotScanned(props) {
-		const { siteNotScanned, categories } = props;
-		const pageUrl = props.pageUrl || '';
+		const { disableBlocking } = this.state;
+		const computeDisableBlocking = Blocking.computeSiteNotScanned(props);
 
-		if (siteNotScanned || !categories || pageUrl.search('http') === -1) {
-			this.setState({ disableBlocking: true });
-		} else {
-			this.setState({ disableBlocking: false });
+		if (disableBlocking !== computeDisableBlocking) {
+			this.setState({ disableBlocking: computeDisableBlocking });
 		}
 	}
+
 	/**
 	* Filter tracker list based on filter data received from props.
 	*/
@@ -238,38 +307,65 @@ class Blocking extends React.Component {
 			this.setShow(filter.name);
 		}
 	}
+
 	/**
 	* Render blocking panel.
 	* @return {ReactComponent}   ReactComponent instance
 	*/
 	render() {
-		const { categories } = this.props;
+		const {
+			actions,
+			categories,
+			unidentifiedCategory,
+			enable_anti_tracking,
+			expand_all_trackers,
+			is_expanded,
+			language,
+			paused_blocking,
+			selected_app_ids,
+			show_tracker_urls,
+			sitePolicy,
+			smartBlock,
+			smartBlockActive,
+		} = this.props;
+
+		const {
+			blockingClasses,
+			disableBlocking
+		} = this.state;
 		return (
 			<div id="content-blocking">
 				<BlockingHeader
 					categories={categories}
-					expandAll={this.props.expand_all_trackers}
-					actions={this.props.actions}
-					sitePolicy={this.props.sitePolicy}
-					paused_blocking={this.props.paused_blocking}
-					selected_app_ids={this.props.selected_app_ids}
+					expandAll={expand_all_trackers}
+					actions={actions}
+					sitePolicy={sitePolicy}
+					paused_blocking={paused_blocking}
+					selected_app_ids={selected_app_ids}
+					smartBlockActive={smartBlockActive}
+					smartBlock={smartBlock}
 				/>
-				{this.state.disableBlocking ?
+				{(disableBlocking && is_expanded) ? (
 					<NotScanned />
-					:
-					<div className={`${this.state.blockingClasses} blocking-trackers show-warnings`}>
-						{ categories.length > 0 &&
+				) : (
+					<div className={`${blockingClasses} blocking-trackers show-warnings`}>
+						{(categories.length > 0 || unidentifiedCategory.unidentifiedTrackers.length > 0) && (
 							<Categories
+								expandAll={expand_all_trackers}
 								categories={categories}
-								actions={this.props.actions}
-								show_tracker_urls={this.props.show_tracker_urls}
-								sitePolicy={this.props.sitePolicy}
-								paused_blocking={this.props.paused_blocking}
-								language={this.props.language}
+								actions={actions}
+								show_tracker_urls={show_tracker_urls}
+								sitePolicy={sitePolicy}
+								paused_blocking={paused_blocking}
+								language={language}
+								smartBlockActive={smartBlockActive}
+								smartBlock={smartBlock}
+								unidentifiedCategory={unidentifiedCategory}
+								enable_anti_tracking={enable_anti_tracking}
 							/>
-						}
+						)}
 					</div>
-				}
+				)}
 			</div>
 		);
 	}

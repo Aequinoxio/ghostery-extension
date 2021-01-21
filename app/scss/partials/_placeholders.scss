@@ -7,8 +7,8 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
- * 
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
@@ -199,13 +199,13 @@ $max-width: 150px;
 	@extend %g-tooltip;
 	&:hover:before {
 		@extend %g-tooltip:hover:before;
-	    left: -15px;
-	    bottom: 26px;
+	    left: -100%;
+	    top: 20px;
 	}
 	&:hover:after {
 		@extend %g-tooltip:hover:after;
 		border-width: 0 6px 6px 6px;
 	    left: 20%;
-	    top: 20px;
+	    top: 14px;
 	}
 }

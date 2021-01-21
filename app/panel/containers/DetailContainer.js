@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import Detail from '../components/Detail';
-import * as actions from '../actions/DetailActions';
+import toggleExpanded from '../actions/DetailActions';
 /**
  * Map redux store state properties to Detailed view own properties.
  * @memberOf PanelContainers
@@ -24,7 +24,9 @@ import * as actions from '../actions/DetailActions';
  * @todo  We are not using ownProps, so we better not specify it explicitly,
  * in this case it won't be passed by React (see https://github.com/reactjs/react-redux/blob/master/docs/api.md).
  */
-const mapStateToProps = (state, ownProps) => Object.assign({}, state.detail, {
+const mapStateToProps = state => ({
+	...state.detail,
+	...state.account,
 	is_expanded: state.panel.is_expanded,
 });
 /**
@@ -34,7 +36,7 @@ const mapStateToProps = (state, ownProps) => Object.assign({}, state.detail, {
  * @param  {Object} 	ownProps  Detailed view component own props
  * @return {function}          	  to be used as an argument in redux connect call
  */
-const mapDispatchToProps = (dispatch, ownProps) => ({ actions: bindActionCreators(actions, dispatch) });
+const mapDispatchToProps = dispatch => ({ actions: bindActionCreators({ toggleExpanded }, dispatch) });
 /**
  * Connects Detailed view component to the Redux store.
  * @memberOf PanelContainers

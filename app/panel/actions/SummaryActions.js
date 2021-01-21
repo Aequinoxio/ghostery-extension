@@ -4,37 +4,42 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import { GET_SUMMARY_DATA,
+import {
+	UPDATE_CLIQZ_MODULE_DATA,
+	UPDATE_SUMMARY_DATA,
 	UPDATE_TRACKER_COUNTS,
 	UPDATE_GHOSTERY_PAUSED,
 	UPDATE_SITE_POLICY,
-	FILTER_TRACKERS,
-	TOGGLE_EXPERT } from '../constants/constants';
+	FILTER_TRACKERS
+} from '../constants/constants';
 import { sendMessageInPromise } from '../utils/msg';
 
 /**
- * Fetch summary data from background
- * @deprecated  in favor or PanelActions.getPanelData()
- * @return {Object} dispatch
+ * Fetch Cliqz Modules data from background
+ * @return {Object}
  */
-export function getSummaryData(tabId) {
-	return function (dispatch) {
-		return sendMessageInPromise('getPanelData', {
-			tabId,
-			view: 'summary',
-		}).then((data) => {
-			dispatch({
-				type: GET_SUMMARY_DATA,
-				data,
-			});
-		});
+export function updateCliqzModuleData(data) {
+	return {
+		type: UPDATE_CLIQZ_MODULE_DATA,
+		data
+	};
+}
+
+/**
+ * Update Summary data
+ * @return {Object}
+ */
+export function updateSummaryData(data) {
+	return {
+		type: UPDATE_SUMMARY_DATA,
+		data,
 	};
 }
 
@@ -58,18 +63,17 @@ export function updateTrackerCounts(data) {
 export function updateGhosteryPaused(data) {
 	const pauseValue = (data.time || data.ghosteryPaused);
 
-	return function (dispatch) {
-		sendMessageInPromise('setPanelData', { paused_blocking: pauseValue }).then(() => {
+	return function(dispatch) {
+		return sendMessageInPromise('setPanelData', { paused_blocking: pauseValue }).then(() => {
 			dispatch({
 				type: UPDATE_GHOSTERY_PAUSED,
 				data
 			});
 			if (data.time) {
 				setTimeout(() => {
-					data.ghosteryPaused = !data.ghosteryPaused;
 					dispatch({
 						type: UPDATE_GHOSTERY_PAUSED,
-						data
+						data: { ...data, ghosteryPaused: !data.ghosteryPaused }
 					});
 				}, data.time);
 			}
@@ -99,15 +103,5 @@ export function filterTrackers(data) {
 	return {
 		type: FILTER_TRACKERS,
 		data,
-	};
-}
-
-/**
- * Called from Summary.toggleExpert() and picked up by panel reducer
- * @return {Object}
- */
-export function toggleExpert() {
-	return {
-		type: TOGGLE_EXPERT,
 	};
 }

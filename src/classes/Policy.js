@@ -6,26 +6,36 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-param-reassign: 0 */
-
 import c2pDb from './Click2PlayDb';
 import conf from './Conf';
-import { processUrl } from '../utils/utils';
 import globals from './Globals';
+import { processUrl } from '../utils/utils';
 
-const POLICY_BLOCK_NOTHING = 'POLICY_BLOCK_NOTHING';
-const POLICY_BLOCK_EVERYTHING = 'POLICY_BLOCK_EVERYTHING';
-const POLICY_BLOCK_ADS = 'POLICY_BLOCK_ADS';
+/**
+ * Enum for reasons returned by shouldBlock
+ * TBD: See if we can do with integer values for performance.
+ * @type {string}
+ */
+export const BLOCK_REASON_BLOCK_PAUSED = 'BLOCK_REASON_BLOCK_PAUSED';
+export const BLOCK_REASON_GLOBAL_BLOCKED = 'BLOCK_REASON_GLOBAL_BLOCKED';
+export const BLOCK_REASON_GLOBAL_UNBLOCKED = 'BLOCK_REASON_GLOBAL_UNBLOCKED';
+export const BLOCK_REASON_WHITELISTED = 'BLOCK_REASON_WHITELISTED';
+export const BLOCK_REASON_BLACKLISTED = 'BLOCK_REASON_BLACKLISTED';
+export const BLOCK_REASON_SS_UNBLOCKED = 'BLOCK_REASON_SS_UNBLOCKED';
+export const BLOCK_REASON_SS_BLOCKED = 'BLOCK_REASON_SS_BLOCKED';
+export const BLOCK_REASON_C2P_ALLOWED_ONCE = 'BLOCK_REASON_C2P_ALLOWED_ONCE';
+export const BLOCK_REASON_C2P_ALLOWED_THROUGH = 'BLOCK_REASON_C2P_ALLOWED_THROUGH';
+
 /**
  * Class for handling site policy.
- * @memberOf  BackgroundClasses
+ * @memberof  BackgroundClasses
  * @todo  make it a Singelton ???
  */
 class Policy {
@@ -34,38 +44,65 @@ class Policy {
 	 * @param  {string} url		site url
 	 * @return {boolean}
 	 */
-	getSitePolicy(url) {
-		if (this.blacklisted(url)) {
-			return 1;
+	static getSitePolicy(hostUrl, trackerUrl) {
+		if (Policy.blacklisted(hostUrl)) {
+			return globals.BLACKLISTED;
 		}
-		if (this.whitelisted(url)) {
-			return 2;
+		if (Policy.checkSiteWhitelist(hostUrl) || Policy.checkCliqzModuleWhitelist(hostUrl, trackerUrl)) {
+			return globals.WHITELISTED;
 		}
 		return false;
 	}
 
 	/**
-	 * Check given url against whitelist
+	 * Check given url against site whitelist
 	 * @param  {string} url 		site url
 	 * @return {string|boolean} 	corresponding whitelist entry or false, if none
 	 */
-	whitelisted(url) {
-		if (url) {
-			url = processUrl(url).host;
-			url = url.replace(/^www\./, '');
+	static checkSiteWhitelist(url) {
+		const hostUrl = processUrl(url).host;
+		if (hostUrl) {
+			const replacedUrl = hostUrl.replace(/^www\./, '');
 			const sites = conf.site_whitelist || [];
 			const num_sites = sites.length;
 
 			// TODO: speed up
 			for (let i = 0; i < num_sites; i++) {
 				// TODO match from the beginning of the string to avoid false matches (somewhere in the querystring for instance)
-				if (url === sites[i]) {
+				if (!sites[i].includes('*') && replacedUrl === sites[i]) {
+					return sites[i];
+				}
+				if (Policy.matchesWildcard(replacedUrl, sites[i])) {
 					return sites[i];
 				}
 			}
 		}
 
 		return false;
+	}
+
+	/**
+	 * Check given url against anti-tracking whitelist
+	 * @param  {string} url 		site url
+	 * @return {string|boolean} 	corresponding whitelist entry or false, if none
+	 */
+	static checkCliqzModuleWhitelist(hostUrl, trackerUrl) {
+		let isWhitelisted = false;
+		const processedHostUrl = processUrl(hostUrl).host;
+		const processedTrackerUrl = processUrl(trackerUrl).host;
+		const cliqzModuleWhitelist = conf.cliqz_module_whitelist;
+
+		if (cliqzModuleWhitelist[processedTrackerUrl]) {
+			cliqzModuleWhitelist[processedTrackerUrl].hosts.some((host) => {
+				if (host === processedHostUrl) {
+					isWhitelisted = true;
+					return true;
+				}
+				return false;
+			});
+		}
+
+		return isWhitelisted;
 	}
 
 	/**
@@ -73,17 +110,20 @@ class Policy {
 	 * @param  {string} url 		site url
 	 * @return {string|boolean} 	corresponding blacklist entry or false, if none
 	 */
-	blacklisted(url) {
-		if (url) {
-			url = processUrl(url).host;
-			url = url.replace(/^www\./, '');
+	static blacklisted(url) {
+		const hostUrl = processUrl(url).host;
+		if (hostUrl) {
+			const replacedUrl = hostUrl.replace(/^www\./, '');
 			const sites = conf.site_blacklist || [];
 			const num_sites = sites.length;
 
 			// TODO: speed up
 			for (let i = 0; i < num_sites; i++) {
 				// TODO match from the beginning of the string to avoid false matches (somewhere in the querystring for instance)
-				if (url === sites[i]) {
+				if (!sites[i].includes('*') && replacedUrl === sites[i]) {
+					return sites[i];
+				}
+				if (Policy.matchesWildcard(replacedUrl, sites[i])) {
 					return sites[i];
 				}
 			}
@@ -91,6 +131,12 @@ class Policy {
 
 		return false;
 	}
+
+	/**
+	 * @typedef {Object} BlockWithReason
+	 * @property {boolean}	block	indicates if the tracker should be blocked.
+	 * @property {string}	reason	indicates the reason for the block result.
+	 */
 
 	/**
 	 * Check the users blocking settings (selected_app_ids and site_specific_blocks/unblocks)
@@ -100,33 +146,72 @@ class Policy {
 	 * @param  {number} tab_id 		tab id
 	 * @param  {string} tab_host 	tab url host
 	 * @param  {string} tab_url 	tab url
-	 * @return {boolean}
+	 * @return {BlockWithReason}	block result with reason
 	 */
-	shouldBlock(app_id, cat_id, tab_id, tab_host, tab_url) {
+	static shouldBlock(app_id, cat_id, tab_id, tab_host, tab_url) {
 		if (globals.SESSION.paused_blocking) {
-			return false;
+			return { block: false, reason: BLOCK_REASON_BLOCK_PAUSED };
 		}
 
+		const allowedOnce = c2pDb.allowedOnce(tab_id, app_id);
+		// The app_id has been globally blocked
 		if (conf.selected_app_ids.hasOwnProperty(app_id)) {
+			// The app_id is on the site-specific allow list for this tab_host
 			if (conf.toggle_individual_trackers && conf.site_specific_unblocks.hasOwnProperty(tab_host) && conf.site_specific_unblocks[tab_host].includes(+app_id)) {
-				if (this.blacklisted(tab_url)) {
-					return !c2pDb.allowedOnce(tab_id, app_id);
+				// Site blacklist overrides all block settings except C2P allow once
+				if (Policy.blacklisted(tab_url)) {
+					return { block: !allowedOnce, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_BLACKLISTED };
 				}
-				return false;
+				return { block: false, reason: BLOCK_REASON_SS_UNBLOCKED };
 			}
-			if (this.whitelisted(tab_url)) {
-				return false;
+			// Check for site white-listing
+			if (Policy.checkSiteWhitelist(tab_url)) {
+				return { block: false, reason: BLOCK_REASON_WHITELISTED };
 			}
-			return !c2pDb.allowedOnce(tab_id, app_id);
+			// The app_id is globally blocked
+			return { block: !allowedOnce, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_GLOBAL_BLOCKED };
 		}
+
+		// The app_id has not been globally blocked
+		// Check to see if the app_id is on the site-specific block list for this tab_host
 		if (conf.toggle_individual_trackers && conf.site_specific_blocks.hasOwnProperty(tab_host) && conf.site_specific_blocks[tab_host].includes(+app_id)) {
-			if (this.whitelisted(tab_url)) {
+			// Site white-listing overrides blocking settings
+			if (Policy.checkSiteWhitelist(tab_url)) {
+				return { block: false, reason: BLOCK_REASON_WHITELISTED };
+			}
+			return { block: !allowedOnce, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_SS_BLOCKED };
+		}
+		// Check to see if the app_id is on the site-specific allow list for this tab_host
+		if (conf.toggle_individual_trackers && conf.site_specific_unblocks.hasOwnProperty(tab_host) && conf.site_specific_unblocks[tab_host].includes(+app_id)) {
+			// Site blacklist overrides all block settings except C2P allow once
+			if (Policy.blacklisted(tab_url)) {
+				return { block: !allowedOnce, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_BLACKLISTED };
+			}
+			return { block: false, reason: BLOCK_REASON_SS_UNBLOCKED };
+		}
+		// Check for site black-listing
+		if (Policy.blacklisted(tab_url)) {
+			return { block: !allowedOnce, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_BLACKLISTED };
+		}
+		// The app_id is globally unblocked
+		return { block: false, reason: allowedOnce ? BLOCK_REASON_C2P_ALLOWED_ONCE : BLOCK_REASON_GLOBAL_UNBLOCKED };
+	}
+
+	/**
+	 * Check given url against pattern which might be a wildcard
+	 * @param  {string} url		site url
+	 * @param  {string} pattern	regex pattern
+	 * @return {boolean}
+	 */
+	static matchesWildcard(url, pattern) {
+		if (pattern && pattern.includes('*')) {
+			const wildcardPattern = pattern.replace(/\*/g, '.*');
+			try {
+				const wildcardRegex = new RegExp(wildcardPattern);
+				if (wildcardRegex.test(url)) { return true; }
+			} catch (err) {
 				return false;
 			}
-			return !c2pDb.allowedOnce(tab_id, app_id);
-		}
-		if (this.blacklisted(tab_url)) {
-			return !c2pDb.allowedOnce(tab_id, app_id);
 		}
 		return false;
 	}

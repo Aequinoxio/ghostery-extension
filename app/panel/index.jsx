@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +13,7 @@
 /**
  * @namespace  PanelClasses
  */
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import { Router, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
@@ -22,13 +22,16 @@ import Panel from './containers/PanelContainer';
 import Summary from './containers/SummaryContainer';
 import Detail from './containers/DetailContainer';
 import Settings from './containers/SettingsContainer';
-import Help from './components/Help';
-import About from './components/About';
+import Subscription from './containers/SubscriptionContainer';
 import Login from './containers/LoginContainer';
 import CreateAccount from './containers/CreateAccountContainer';
-import ForgotPassword from './containers/ForgotPasswordContainer';
+import ForgotPassword from '../shared-components/ForgotPassword/ForgotPasswordContainer';
 import AccountSuccess from './containers/AccountSuccessContainer';
 import configureStore from './store/configureStore';
+import Help from './components/Help';
+import About from './components/About';
+import Subscribe from './components/Subscribe';
+import Stats from './containers/StatsContainer';
 
 const store = configureStore();
 /**
@@ -43,9 +46,12 @@ const Ghostery = () => (
 		<Route path="/settings" component={Settings} />
 		<Route path="/help" component={Help} />
 		<Route path="/about" component={About} />
+		<Route path="/subscription" component={Subscription} />
+		<Route path="/stats" component={Stats} />
+		<Route path="/subscribe/:loggedIn" component={Subscribe} />
 		<Route path="/login" component={Login} />
 		<Route path="/create-account" component={CreateAccount} />
-		<Route path="/forgot-password" component={ForgotPassword} />
+		<Route path="/forgot-password" render={() => <ForgotPassword />} />
 		<Route path="/account-success" component={AccountSuccess} />
 	</Panel>
 );

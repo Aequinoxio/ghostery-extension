@@ -4,8 +4,8 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
- * 
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
@@ -61,7 +61,17 @@
 		line-height: 19px;
 		&.disabled {
 			color: #acacac;
+			pointer-events: none;
+			visibility: hidden;
 		}
+	}
+	.caret-down {
+		@extend %pointer;
+		display: inline-block;
+		width: 20px;
+		height: 10px;
+		background: url("../../app/images/panel/caret-down.svg") no-repeat center;
+		background-size: 45% auto;
 	}
 }
 
@@ -139,6 +149,7 @@
 	border-top: 1px solid $silver-chalice;
 	border-left: 1px solid $silver-chalice;
 	border-bottom: 1px solid $silver-chalice;
+	background-color: #F7F8FB;
 	.filter-menu-item {
 		@extend .filter-text;
 		background-color: $alabaster;
@@ -156,5 +167,11 @@
 	.filter-menu-item-new {
 		@extend .filter-menu-item;
 		color: $ghosty-blue;
+	}
+	.filter-menu-item,
+	.filter-menu-item-new {
+		overflow-x: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 }

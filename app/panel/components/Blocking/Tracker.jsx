@@ -4,25 +4,29 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint react/no-array-index-key: 0 */
+import React from 'react';
+import ClassNames from 'classnames';
 
-import React, { Component } from 'react';
+import ThemeContext from '../../contexts/ThemeContext';
 import globals from '../../../../src/classes/Globals';
 import { log } from '../../../../src/utils/common';
 import { sendMessageInPromise } from '../../utils/msg';
+import { renderKnownTrackerButtons, renderUnidentifiedTrackerButtons } from './trackerButtonRenderHelpers';
 /**
  * @class Implement Tracker component which represents single tracker
  * in the Blocking view.
  * @memberOf BlockingComponents
  */
 class Tracker extends React.Component {
+	static contextType = ThemeContext;
+
 	constructor(props) {
 		super(props);
 		this.state = {
@@ -38,68 +42,21 @@ class Tracker extends React.Component {
 		this.clickTrackerStatus = this.clickTrackerStatus.bind(this);
 		this.clickTrackerTrust = this.clickTrackerTrust.bind(this);
 		this.clickTrackerRestrict = this.clickTrackerRestrict.bind(this);
+		this.handleCliqzTrackerWhitelist = this.handleCliqzTrackerWhitelist.bind(this);
 	}
+
 	/**
 	 * Lifecycle event.
 	 */
-	componentWillMount() {
-		this.updateTrackerClasses(this.props.tracker);
+	static getDerivedStateFromProps(nextProps) {
+		return Tracker.computeTrackerClasses(nextProps.tracker);
 	}
-	/**
-	 * Lifecycle event.
-	 */
-	componentWillReceiveProps(nextProps) {
-		this.updateTrackerClasses(nextProps.tracker);
-	}
-	/**
-	 * React hook used to optimise re-rendering of the list of trackers.
-	 * @param  {Object} nextProps	changed props
-	 * @param  {Object} nextState   changed state
-	 * @return {boolean}            true means proceed with rendering
-	 */
-	shouldComponentUpdate(nextProps, nextState) {
-		const { tracker } = nextProps;
-		if (!tracker || Object.keys(tracker).length === 0) {
-			return false;
-		}
-		return true;
-	}
-	/**
-	 * Implement handler for clicking on the tracker title
-	 * which shows/hides tracker description. On show it retrieves
-	 * description from https://apps.ghostery.com and sets it in state.
-	 */
-	toggleDescription() {
-		const { tracker } = this.props;
-		this.setState({ showMoreInfo: !this.state.showMoreInfo });
 
-		if (this.state.description) {
-			return;
-		}
-
-		this.setState({ description: t('tracker_description_getting') });
-
-		sendMessageInPromise('getTrackerDescription', {
-			url: `https:\/\/${globals.APPS_SUB_DOMAIN}.ghostery.com/${this.props.language}/apps/${
-				encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}?format=json`,
-		}).then((data) => {
-			if (data) {
-				const truncate = (data.length > 200) ? `${data.substr(0, 199)}...` : data;
-				this.setState({ description: truncate });
-				this.setState({ showTrackerLearnMore: true });
-			} else {
-				this.setState({ description: t('tracker_description_none_found') });
-			}
-		}).catch((err) => {
-			log('Error loading tracker description', err);
-			this.setState({ description: t('tracker_description_none_found') });
-		});
-	}
 	/**
-	 * Set dynamic classes on .blocking-trk and save it in state.
+	 * Compute dynamic classes on .blocking-trk and return it as an object.
 	 * @param  {Object} tracker    tracker object
 	 */
-	updateTrackerClasses(tracker) {
+	static computeTrackerClasses(tracker) {
 		const classes = [];
 		let updated_title = '';
 
@@ -129,11 +86,102 @@ class Tracker extends React.Component {
 			updated_title = t('panel_tracker_warning_slow_tooltip');
 		}
 
-		this.setState({
+		return {
 			trackerClasses: classes.join(' '),
 			warningImageTitle: updated_title,
+		};
+	}
+
+	static _renderCliqzCookieStat(count) { return Tracker._renderCliqzStat(count, 'cookie'); }
+
+	static _renderCliqzFingerprintStat(count) { return Tracker._renderCliqzStat(count, 'fingerprint'); }
+
+	static _renderCliqzAdStat(count) { return Tracker._renderCliqzStat(count, 'ad'); }
+
+	static _renderCliqzStat(count, type) {
+		const exactlyOne = count === 1;
+		const label = exactlyOne ?
+			t(`${type}`) :
+			t(`${type}s`);
+		const cssClass = `trk-cliqz-stat trk-cliqz-stat-${type}s-count`;
+
+		return (
+			<span className={cssClass}>
+				{count}
+				{' '}
+				{label}
+			</span>
+		);
+	}
+
+	/**
+	 * Lifecycle event.
+	 */
+	componentDidMount() {
+		const { tracker } = this.props;
+		this.updateTrackerClasses(tracker);
+	}
+
+	/**
+	 * React hook used to optimise re-rendering of the list of trackers.
+	 * @param  {Object} nextProps	changed props
+	 * @param  {Object} nextState   changed state
+	 * @return {boolean}            true means proceed with rendering
+	 */
+	shouldComponentUpdate(nextProps) {
+		const { tracker } = nextProps;
+		if (!tracker || Object.keys(tracker).length === 0) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Implement handler for clicking on the tracker title
+	 * which shows/hides tracker description. On show it retrieves
+	 * description from https://apps.ghostery.com and sets it in state.
+	 */
+	toggleDescription() {
+		const { tracker, language } = this.props;
+		this.setState(prevState => ({ showMoreInfo: !prevState.showMoreInfo }));
+
+		const { description } = this.state;
+		if (description) {
+			return;
+		}
+
+		this.setState({ description: t('tracker_description_getting') });
+
+		sendMessageInPromise('getTrackerDescription', {
+			url: `${globals.APPS_BASE_URL}/${language}/apps/${
+				encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}?format=json`,
+		}).then((data) => {
+			if (data) {
+				const truncate = (data.length > 200) ? `${data.substr(0, 199)}...` : data;
+				this.setState({ description: truncate });
+				this.setState({ showTrackerLearnMore: true });
+			} else {
+				this.setState({ description: t('tracker_description_none_found') });
+			}
+		}).catch((err) => {
+			log('Error loading tracker description', err);
+			this.setState({ description: t('tracker_description_none_found') });
 		});
 	}
+
+	/**
+	 * Set dynamic classes on .blocking-trk to state.
+	 * @param  {Object} tracker    tracker object
+	 */
+	updateTrackerClasses(tracker) {
+		const {
+			trackerClasses,
+			warningImageTitle
+		} = Tracker.computeTrackerClasses(tracker);
+
+		this.setState({ trackerClasses, warningImageTitle });
+	}
+
 	/**
 	 * Implement handler for clicking on the tracker global block/unblock checkbox.
 	 * Trigger action which persists new tracker blocked state and spawns
@@ -141,20 +189,31 @@ class Tracker extends React.Component {
 	 * user that the page should be reloaded.
 	 */
 	clickTrackerStatus() {
-		const blocked = !this.props.tracker.blocked;
+		const {
+			actions,
+			tracker,
+			paused_blocking,
+			sitePolicy,
+			smartBlockActive,
+			smartBlock,
+			cat_id,
+		} = this.props;
+		const blocked = !tracker.blocked;
 
-		if (this.props.paused_blocking || this.props.sitePolicy) {
+		if (paused_blocking || sitePolicy) {
 			return;
 		}
 
-		this.props.actions.updateTrackerBlocked({
-			app_id: this.props.tracker.id,
-			cat_id: this.props.cat_id,
+		actions.updateTrackerBlocked({
+			smartBlockActive,
+			smartBlock,
+			app_id: tracker.id,
+			cat_id,
 			blocked,
 		});
 
-		this.props.actions.showNotification({
-			updated: `${this.props.tracker.id}_blocked`,
+		actions.showNotification({
+			updated: `${tracker.id}_blocked`,
 			reload: true,
 		});
 	}
@@ -165,16 +224,17 @@ class Tracker extends React.Component {
 	 * that the page should be reloaded.
 	 */
 	clickTrackerTrust() {
-		const ss_allowed = !this.props.tracker.ss_allowed;
-		this.props.actions.updateTrackerTrustRestrict({
-			app_id: this.props.tracker.id,
-			cat_id: this.props.cat_id,
+		const { actions, tracker, cat_id } = this.props;
+		const ss_allowed = !tracker.ss_allowed;
+		actions.updateTrackerTrustRestrict({
+			app_id: tracker.id,
+			cat_id,
 			trust: ss_allowed,
 			restrict: false,
 		});
 
-		this.props.actions.showNotification({
-			updated: `${this.props.tracker.id}_ss_allowed`,
+		actions.showNotification({
+			updated: `${tracker.id}_ss_allowed`,
 			reload: true,
 		});
 	}
@@ -185,118 +245,174 @@ class Tracker extends React.Component {
 	 * that the page should be reloaded.
 	 */
 	clickTrackerRestrict() {
-		const ss_blocked = !this.props.tracker.ss_blocked;
-		this.props.actions.updateTrackerTrustRestrict({
-			app_id: this.props.tracker.id,
-			cat_id: this.props.cat_id,
+		const { actions, tracker, cat_id } = this.props;
+		const ss_blocked = !tracker.ss_blocked;
+		actions.updateTrackerTrustRestrict({
+			app_id: tracker.id,
+			cat_id,
 			trust: false,
 			restrict: ss_blocked,
 		});
 
-		this.props.actions.showNotification({
-			updated: `${this.props.tracker.id}_ss_blocked`,
+		actions.showNotification({
+			updated: `${tracker.id}_ss_blocked`,
 			reload: true,
 		});
 	}
+
+	/**
+	 * Implement handler for clicking on the trust or scrub SVGs for an unidentified tracker
+	 * Trigger actions which persist the new setting and notify user
+	 * that the page should be reloaded.
+	 */
+	handleCliqzTrackerWhitelist() {
+		const { actions, tracker } = this.props;
+
+		actions.updateCliqzModuleWhitelist(tracker);
+		actions.showNotification({
+			updated: `${tracker.name}-whitelisting-status-changed`,
+			reload: true,
+		});
+	}
+
+	_renderCliqzStatsContainer() {
+		const { tracker } = this.props;
+		const { cliqzAdCount, cliqzCookieCount, cliqzFingerprintCount } = tracker;
+
+		const oneOrMoreCookies = cliqzCookieCount >= 1;
+		const oneOrMoreFingerprints = cliqzFingerprintCount >= 1;
+		const oneOrMoreAds = cliqzAdCount >= 1;
+
+		return (
+			<div className="trk-cliqz-stats-outer-container">
+				{(oneOrMoreCookies || oneOrMoreFingerprints) && (
+					<div className="trk-cliqz-stats-container">
+						{this._renderCliqzCookiesAndFingerprintsIcon()}
+						{oneOrMoreCookies && Tracker._renderCliqzCookieStat(cliqzCookieCount)}
+						{oneOrMoreFingerprints && Tracker._renderCliqzFingerprintStat(cliqzFingerprintCount)}
+					</div>
+				)}
+				{oneOrMoreAds && (
+					<div className="trk-cliqz-stats-container">
+						{this._renderCliqzAdsIcon()}
+						{Tracker._renderCliqzAdStat(cliqzAdCount)}
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	_renderCliqzCookiesAndFingerprintsIcon() {
+		return (
+			<svg className={`trk-cliqz-stats-icon cookies-and-fingerprints-icon ${this.context}`} width="15" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+				<path fillRule="evenodd" strokeWidth=".96" d="M5.085 1.013a.288.288 0 0 0-.17 0l-3.66.97A.328.328 0 0 0 1 2.308c.017 2.606 1.413 5.024 3.813 6.642.05.034.119.051.187.051a.344.344 0 0 0 .187-.051C7.587 7.33 8.983 4.913 9 2.307a.328.328 0 0 0-.255-.323l-3.66-.971z" />
+			</svg>
+		);
+	}
+
+	_renderCliqzAdsIcon() {
+		return (
+			<svg className={`trk-cliqz-stats-icon ads-icon ${this.context}`} width="15" height="10" viewBox="0 0 11 11" xmlns="http://www.w3.org/2000/svg">
+				<g fillRule="evenodd">
+					<path className="inner-background" d="M7.49 1.234L9.922 3.89l-.157 3.6L7.11 9.922l-3.6-.157L1.078 7.11l.157-3.6L3.89 1.078z" />
+					<path d="M2.788 8.54c.315.315.628.63.944.943.023.023.067.035.103.035 1.077.001 2.153.002 3.23-.001.04 0 .09-.02.117-.048a820.63 820.63 0 0 0 2.285-2.285.184.184 0 0 0 .05-.116c.003-1.08.003-2.16.002-3.24-.001-.03-.008-.068-.026-.088-.316-.321-.635-.64-.95-.956L2.789 8.54m-.436-.433l5.754-5.754c-.308-.309-.621-.623-.937-.936a.16.16 0 0 0-.102-.036 709.213 709.213 0 0 0-3.231 0c-.04 0-.09.02-.118.048-.765.762-1.53 1.525-2.291 2.29a.16.16 0 0 0-.045.1 928.271 928.271 0 0 0 0 3.26c0 .029.01.065.03.085.314.318.631.634.94.943m7.752-2.652c0 .581-.002 1.162.002 1.743a.405.405 0 0 1-.127.31 879.44 879.44 0 0 0-2.47 2.47.398.398 0 0 1-.303.128c-1.17-.003-2.341-.003-3.512 0a.4.4 0 0 1-.302-.126A884.3 884.3 0 0 0 .915 7.503a.385.385 0 0 1-.121-.294c.002-1.17.002-2.342 0-3.513 0-.122.036-.216.123-.303.827-.824 1.653-1.65 2.477-2.477a.388.388 0 0 1 .293-.123c1.174.002 2.348.002 3.523 0 .119 0 .21.038.293.122.827.83 1.655 1.657 2.484 2.484.081.08.12.17.119.285-.004.59-.002 1.181-.002 1.771" />
+				</g>
+			</svg>
+		);
+	}
+
 	/**
 	* Render a tracker in Blocking view.
 	* @return {ReactComponent}   ReactComponent instance
 	*/
 	render() {
-		const { tracker } = this.props;
-		let sources;
+		const {
+			tracker, isUnidentified, language, show_tracker_urls
+		} = this.props;
+		const {
+			trackerClasses,
+			description,
+			warningImageTitle,
+			showMoreInfo,
+			showTrackerLearnMore,
+		} = this.state;
 
+		let sources;
 		if (tracker.sources) {
-			sources = tracker.sources.map((source, index) => (
+			sources = tracker.sources.map(source => (
 				<a
 					target="_blank"
+					rel="noopener noreferrer"
 					className="trk-src-link"
 					title={source.src}
-					key={index}
-					href={`https://${encodeURIComponent(globals.GCACHE_SUB_DOMAIN)}.ghostery.com/${encodeURIComponent(this.props.language)}/gcache/?n=${encodeURIComponent(tracker.name)}&s=${encodeURIComponent(source.src)}&v=2&t=${source.type}`}
+					key={source.request_id}
+					href={`${globals.GCACHE_BASE_URL}/${encodeURIComponent(language)}/gcache/?n=${encodeURIComponent(tracker.name)}&s=${encodeURIComponent(source.src)}&v=2&t=${source.type}`}
 				>
 					{ source.src }
 				</a>
 			));
+		} else if (tracker.domains) {
+			sources = tracker.domains.map(domain => (
+				<p className="trk-src-link unidentified" key={domain}>{domain}</p>
+			));
 		}
+
+		const trackerNameClasses = ClassNames('trk-name', {
+			'is-whitelisted': tracker.whitelisted && !tracker.siteRestricted,
+		});
+
 		return (
-			<div className={`${this.state.trackerClasses} blocking-trk`}>
+			<div className={`${trackerClasses} blocking-trk`}>
 				<div className="row align-middle trk-header">
 					<div className="columns shrink">
-						<div className={`warning-image right${this.state.warningImageTitle ? ' t-tooltip-up-right' : ''}`} data-g-tooltip={this.state.warningImageTitle} />
+						<div className={`warning-image right${warningImageTitle ? ' t-tooltip-up-right' : ''}`} data-g-tooltip={warningImageTitle} />
 					</div>
 					<div className="columns collapse-left">
-						<div className="trk-name" onClick={this.toggleDescription}>{ tracker.name }</div>
+						<div
+							className={trackerNameClasses}
+							onClick={this.toggleDescription}
+						>
+							{tracker.name}
+						</div>
+						{!tracker.whitelisted && this._renderCliqzStatsContainer()}
 					</div>
 					<div className="columns shrink align-self-justify collapse-right">
-						<div className="svg-container">
-							<span className="t-tooltip-up-left" data-g-tooltip={this.props.tracker.ss_allowed ? t('summary_undo') : t('panel_tracker_trust_tooltip')}>
-								<svg className="blocking-icons trust" onClick={this.clickTrackerTrust} width="20px" height="20px" viewBox="0 0 20 20">
-									<g transform="translate(1 1)" fill="none" fillRule="evenodd">
-										<path className="border" d="M-.5-.5h18.3v18.217H-.5z" />
-										<path className="background" d="M.5.5h16.3v16.217H.5z" />
-										<svg width="20px" height="20px" viewBox="-2.75 -2.75 20 20">
-											<circle className="trust-circle" cx="5.875" cy="5.875" r="5.875" fillRule="evenodd" />
-										</svg>
-									</g>
-								</svg>
-							</span>
-							<span className="t-tooltip-up-left" data-g-tooltip={this.props.tracker.ss_blocked ? t('summary_undo') : t('panel_tracker_restrict_tooltip')} >
-								<svg className="blocking-icons restrict" onClick={this.clickTrackerRestrict} width="20px" height="20px" viewBox="0 0 20 20">
-									<g transform="translate(1 1)" fill="none" fillRule="evenodd">
-										<path className="border" d="M-.5-.5h18.3v18.217H-.5z" />
-										<path className="background" d="M.5.5h16.3v16.217H.5z" />
-										<svg width="20px" height="20px" viewBox="-2 -2 20 20">
-											<g className="restrict-circle" transform="translate(1 1)" fillRule="evenodd">
-												<path d="M1.958 1.958l7.834 7.834" />
-												<circle cx="5.753" cy="5.753" r="5.753" />
-											</g>
-										</svg>
-									</g>
-								</svg>
-							</span>
-							<span className={(!this.props.tracker.ss_blocked && !this.props.tracker.ss_allowed) ? 't-tooltip-up-left' : ''} data-g-tooltip={t('panel_tracker_block_tooltip')} >
-								<svg className="blocking-icons status" onClick={() => { if (this.props.tracker.ss_allowed || this.props.tracker.ss_blocked) { return; } this.clickTrackerStatus(); }} width="20px" height="20px" viewBox="0 0 20 20">
-									<g transform="translate(1 1)" fill="none" fillRule="evenodd">
-										<path className="border" d="M-.5-.5h18.3v18.217H-.5z" />
-										<path className="background" d="M.5.5h16.3v16.217H.5z" />
-										<svg width="20px" height="20px" viewBox="-2.5 -2.5 20 20">
-											<path className="check" d="M8.062 6l3.51-3.51c.57-.57.57-1.493 0-2.063-.57-.57-1.495-.57-2.063 0L6 3.937 2.49.428c-.57-.57-1.493-.57-2.063 0-.57.57-.57 1.494 0 2.064L3.937 6 .426 9.51c-.57.57-.57 1.493 0 2.063.57.57 1.494.57 2.063 0L6 8.063l3.51 3.508c.57.57 1.493.57 2.063 0 .57-.57.57-1.493 0-2.062L8.063 6z" fillRule="nonzero" />
-										</svg>
-										<svg width="20px" height="20px" viewBox="-2.75 -2.75 20 20">
-											<circle className="trust-circle" cx="5.875" cy="5.875" r="5.875" fillRule="evenodd" />
-										</svg>
-										<svg width="20px" height="20px" viewBox="-2 -2 20 20">
-											<g className="restrict-circle" transform="translate(1 1)" fillRule="evenodd">
-												<path d="M1.958 1.958l7.834 7.834" />
-												<circle cx="5.753" cy="5.753" r="5.753" />
-											</g>
-										</svg>
-									</g>
-								</svg>
-							</span>
-						</div>
+						{!isUnidentified && renderKnownTrackerButtons(
+							tracker.ss_allowed,
+							tracker.ss_blocked,
+							this.clickTrackerTrust,
+							this.clickTrackerRestrict,
+							this.clickTrackerStatus,
+						)}
+						{isUnidentified && renderUnidentifiedTrackerButtons(
+							this.handleCliqzTrackerWhitelist,
+							tracker.whitelisted,
+							tracker.siteRestricted,
+							tracker.type,
+							this.context
+						)}
 					</div>
 				</div>
-				{
-					this.state.showMoreInfo &&
-					<div className={`${!this.state.showMoreInfo ? 'hide' : ''} row trk-moreinfo`}>
+				{showMoreInfo && (
+					<div className={`${!showMoreInfo ? 'hide' : ''} row trk-moreinfo`}>
 						<div className="columns">
-							<div className="trk-description">
-								{ this.state.description }
-								<div className={(!this.state.showTrackerLearnMore ? 'hide' : '')}>
-									<a target="_blank" title={tracker.name} href={`https://${globals.APPS_SUB_DOMAIN}.ghostery.com/${this.props.language}/apps/${encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}`}>
-										{ t('tracker_description_learn_more') }
-									</a>
+							{!isUnidentified && (
+								<div className="trk-description">
+									{description}
+									<div className={(!showTrackerLearnMore ? 'hide' : '')}>
+										<a target="_blank" rel="noopener noreferrer" title={tracker.name} href={`${globals.APPS_BASE_URL}/${language}/apps/${encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}`}>
+											{t('tracker_description_learn_more')}
+										</a>
+									</div>
 								</div>
-							</div>
-							<div className={`${!this.props.show_tracker_urls ? 'hide' : ''}`}>
-								<div className="trk-srcs-title">{ t('panel_tracker_found_sources_title') }</div>
-								<div className="trk-srcs">{ sources }</div>
+							)}
+							<div className={`${!show_tracker_urls ? 'hide' : ''}`}>
+								<div className="trk-srcs-title">{t('panel_tracker_found_sources_title')}</div>
+								<div className="trk-srcs">{sources}</div>
 							</div>
 						</div>
 					</div>
-				}
+				)}
 			</div>
 		);
 	}

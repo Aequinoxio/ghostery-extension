@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,8 +16,8 @@ import globals from './Globals';
 import { getJson } from '../utils/utils';
 import { log } from '../utils/common';
 
-const { BROWSER_INFO, CMP_SUB_DOMAIN, EXTENSION_VERSION } = globals;
-const IS_EDGE = (globals.BROWSER_INFO.name === 'edge');
+const { BROWSER_INFO, CMP_BASE_URL, EXTENSION_VERSION } = globals;
+
 /**
  * Class for handling notification and/or marketing campaigns.
  * @memberOf  BackgroundClasses
@@ -36,36 +36,11 @@ class CMP {
 			return Promise.resolve(false);
 		}
 
-		const URL = `https://${CMP_SUB_DOMAIN}.ghostery.com/check
-			?os=${encodeURIComponent(BROWSER_INFO.os)}
-			&offers=${encodeURIComponent(conf.enable_offers ? '1' : '0')}
-			&hw=${encodeURIComponent(IS_EDGE ? '2' : (conf.enable_human_web ? '1' : '0'))}
-			&install_date=${encodeURIComponent(conf.install_date)}
-			&ir=${encodeURIComponent(conf.install_random_number)}
-			&gv=${encodeURIComponent(EXTENSION_VERSION)}
-			&si=${encodeURIComponent(conf.login_info.logged_in ? '1' : '0')}
-			&ua=${encodeURIComponent(BROWSER_INFO.name)}
-			&lc=${encodeURIComponent(conf.last_cmp_date)}
-			&v=${encodeURIComponent(conf.cmp_version)}
-			&l=${encodeURIComponent(conf.language)}`;
+		const URL = CMP._buildUrl();
 
 		return getJson(URL).then((data) => {
-			if (data && (!conf.cmp_version || data.Version > conf.cmp_version)) {
-				// set default dismiss
-				data.Campaigns.forEach((campaign) => {
-					if (campaign.Dismiss === 0) {
-						campaign.Dismiss = 10;
-					}
-
-					// set last campaign run timestamp to avoid running campaigns more than once
-					if (!conf.last_cmp_date || conf.last_cmp_date < campaign.Timestamp) {
-						conf.last_cmp_date = campaign.Timestamp;
-					}
-				});
-				// update Conf and local CMP_DATA
-				conf.cmp_version = data.Version;
-				// eslint-disable-next-line no-multi-assign
-				globals.SESSION.cmp_data = this.CMP_DATA = data.Campaigns;
+			if (CMP._isNewData(data)) {
+				this._updateCampaigns(data);
 				return this.CMP_DATA;
 			}
 			// getJson() returned a 204, meaning no new campaigns available
@@ -76,6 +51,58 @@ class CMP {
 			log('Error in fetchCMPData', err);
 			return false;
 		});
+	}
+
+	debugFetch() {
+		const URL = CMP._buildUrl();
+
+		return getJson(URL)
+			.then((data) => {
+				if (CMP._isNewData(data)) {
+					this._updateCampaigns(data);
+					return ({ ok: true, testsUpdated: true });
+				}
+				globals.SESSION.cmp_data = [];
+				return ({ ok: true, testsUpdated: false });
+			})
+			.catch(() => ({ ok: false, testsUpdated: false }));
+	}
+
+	_updateCampaigns(data) {
+		// set default dismiss
+		data.Campaigns.forEach((dataEntry) => {
+			if (dataEntry.Dismiss === 0) {
+				dataEntry.Dismiss = 10;
+			}
+
+			// set last campaign (dataEntry) run timestamp to avoid running campaigns more than once
+			if (!conf.last_cmp_date || conf.last_cmp_date < dataEntry.Timestamp) {
+				conf.last_cmp_date = dataEntry.Timestamp;
+			}
+		});
+		// update Conf and local CMP_DATA
+		conf.cmp_version = data.Version;
+		globals.SESSION.cmp_data = data.Campaigns;
+		this.CMP_DATA = data.Campaigns;
+	}
+
+	static _buildUrl() {
+		return (`${CMP_BASE_URL}/check
+			?os=${encodeURIComponent(BROWSER_INFO.os)}
+			&hw=${encodeURIComponent(conf.enable_human_web ? '1' : '0')}
+			&install_date=${encodeURIComponent(conf.install_date)}
+			&ir=${encodeURIComponent(conf.install_random_number)}
+			&gv=${encodeURIComponent(EXTENSION_VERSION)}
+			&si=${encodeURIComponent(conf.account ? '1' : '0')}
+			&ua=${encodeURIComponent(BROWSER_INFO.name)}
+			&lc=${encodeURIComponent(conf.last_cmp_date)}
+			&v=${encodeURIComponent(conf.cmp_version)}
+			&l=${encodeURIComponent(conf.language)}`
+		);
+	}
+
+	static _isNewData(data) {
+		return (data && (!conf.cmp_version || data.Version > conf.cmp_version));
 	}
 }
 

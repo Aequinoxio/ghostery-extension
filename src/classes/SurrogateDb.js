@@ -4,17 +4,20 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import _ from 'underscore';
+import {
+	any, filter, isArray, map
+} from 'underscore';
 import conf from './Conf';
 import Updatable from './Updatable';
 import { log } from '../utils/common';
+
 /**
  * Class for handling Ghostery Surrogates json database which is
  * a cross-reference of sites and trackers that would break
@@ -44,7 +47,7 @@ class SurrogateDb extends Updatable {
 	 * @override
 	 *
 	 */
-	update() {}
+	static update() {}
 
 	/**
 	 * Process surrogates from fetched json
@@ -54,19 +57,20 @@ class SurrogateDb extends Updatable {
 	processList(fromMemory, data) {
 		log('processing surrogates...');
 
-		data.mappings.forEach((s) => {
+		data.mappings.forEach((souragate) => {
+			const s = { ...souragate };
 			s.code = data.surrogates[s.sid];
 
 			// convert single values to arrays first
 			['pattern_id', 'app_id', 'sites', 'match'].forEach((prop) => {
-				if (s.hasOwnProperty(prop) && !_.isArray(s[prop])) {
+				if (s.hasOwnProperty(prop) && !isArray(s[prop])) {
 					s[prop] = [s[prop]];
 				}
 			});
 
 			// initialize regexes
 			if (s.hasOwnProperty('match')) {
-				s.match = _.map(s.match, match => new RegExp(match, ''));
+				s.match = map(s.match, match => new RegExp(match, ''));
 			}
 
 			if (s.hasOwnProperty('pattern_id') || s.hasOwnProperty('app_id')) {
@@ -92,7 +96,7 @@ class SurrogateDb extends Updatable {
 	/**
 	 * Get surrogates for a particular tracker.
 	 * @param  {string} script_src	script source
-	 * @param  {number} 	app_id      tracker id
+	 * @param  {number} app_id      tracker id
 	 * @param  {number}	pattern_id  matching pattern id
 	 * @param  {string} host_name   host name
 	 * @return {Object}             filtered list of surrogates
@@ -108,7 +112,7 @@ class SurrogateDb extends Updatable {
 			candidates = candidates.concat(this.db.pattern_ids[pattern_id]);
 		}
 
-		return _.filter(candidates, (surrogate) => {
+		return filter(candidates, (surrogate) => {
 			// note: does not support *.example.com (exact matches only)
 			if (surrogate.hasOwnProperty('sites')) { // array of site hosts
 				if (!surrogate.sites.includes(host_name)) {
@@ -117,7 +121,7 @@ class SurrogateDb extends Updatable {
 			}
 
 			if (surrogate.hasOwnProperty('match')) {
-				if (!_.any(surrogate.match, match => script_src.match(match))) {
+				if (!any(surrogate.match, match => script_src.match(match))) {
 					return false;
 				}
 			}

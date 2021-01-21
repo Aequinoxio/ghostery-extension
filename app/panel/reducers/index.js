@@ -4,7 +4,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,11 +18,9 @@ import panel from './panel';
 import summary from './summary';
 import detail from './detail';
 import blocking from './blocking';
-import login from './login';
-import createAccount from './createAccount';
 import settings from './settings';
-import forgotPassword from './forgotPassword';
-import drawer from './drawer';
+import account from '../../Account/AccountReducer';
+
 /**
  * Export combined reducers object which provides
  * the full list of reducers. To be imported by React.
@@ -36,11 +34,8 @@ const Reducers = combineReducers({
 	summary,
 	detail,
 	blocking,
-	login,
-	createAccount,
 	settings,
-	forgotPassword,
-	drawer,
+	account,
 });
 
 export default Reducers;

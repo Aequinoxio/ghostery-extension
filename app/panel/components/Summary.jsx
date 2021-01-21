@@ -4,460 +4,850 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
+import React from 'react';
+import { ReactSVG } from 'react-svg';
 import ClassNames from 'classnames';
-import { sendMessage } from '../utils/msg';
-import DonutGraph from './DonutGraph';
-import SelectButton from './SelectButton';
 import Tooltip from './Tooltip';
-import NotScanned from './NotScanned';
+import DynamicUIPortContext from '../contexts/DynamicUIPortContext';
+import { sendMessage } from '../utils/msg';
 import globals from '../../../src/classes/Globals';
-import { updateSummaryBlockingCount } from '../utils/blocking';
+import {
+	CliqzFeature,
+	DonutGraph,
+	GhosteryFeature,
+	NotScanned,
+	PauseButton
+} from './BuildingBlocks';
 
-const { BROWSER_INFO } = globals;
-const { IS_CLIQZ } = globals;
+const {
+	IS_CLIQZ,
+	BLACKLISTED, WHITELISTED,
+} = globals;
+
 /**
- * @class Implement Summary view.
+ * @class Implements the Summary View, which is displayed as the entire panel
+ * as the Simple View or condensed as part of the Detailed View. Summary View
+ * displays site information, aggregate tracker data, and options for toggling
+ * Ghostery and Cliqz features.
  * @memberof PanelClasses
  */
 class Summary extends React.Component {
+	static contextType = DynamicUIPortContext;
+
 	constructor(props) {
 		super(props);
 		this.state = {
-			trackerLatencyTotal: '',
+			trackerLatencyTotal: 0,
 			disableBlocking: false,
 		};
 
-		// event bindings
-		this.clickGhosteryPause = this.clickGhosteryPause.bind(this);
+		// Event Bindings
+		this.clickCliqzFeature = this.clickCliqzFeature.bind(this);
+		this.clickDonut = this.clickDonut.bind(this);
+		this.clickPauseButton = this.clickPauseButton.bind(this);
 		this.clickSitePolicy = this.clickSitePolicy.bind(this);
 		this.clickTrackersBlocked = this.clickTrackersBlocked.bind(this);
-		this.clickTrackersAlerts = this.clickTrackersAlerts.bind(this);
-		this.clickMapTheseTrackers = this.clickMapTheseTrackers.bind(this);
+		this.clickTrackersCount = this.clickTrackersCount.bind(this);
+		this.clickUpgradeBannerOrGoldPlusIcon = this.clickUpgradeBannerOrGoldPlusIcon.bind(this);
+		this.showStatsView = this.showStatsView.bind(this);
 		this.toggleExpert = this.toggleExpert.bind(this);
-		this.openDrawer = this.openDrawer.bind(this);
+		this.handlePortMessage = this.handlePortMessage.bind(this);
 
 		this.pauseOptions = [
-			{ name: t('pause_30_min'), val: 30 },
-			{ name: t('pause_1_hour'), val: 60 },
-			{ name: t('pause_24_hours'), val: 1440 },
+			{ name: t('pause_30_min'), name_condensed: t('pause_30_min_condensed'), val: 30 },
+			{ name: t('pause_1_hour'), name_condensed: t('pause_1_hour_condensed'), val: 60 },
+			{ name: t('pause_24_hours'), name_condensed: t('pause_24_hours_condensed'), val: 1440 },
 		];
 	}
+
 	/**
-	 * Lifecycle event.
+	 * Lifecycle event
 	 */
-	componentWillMount() {
-		this.setTrackerLatency(this.props);
-		this.updateSiteNotScanned(this.props);
-	}
-	/**
-	 * Lifecycle event.
-	 */
-	componentWillReceiveProps(nextProps) {
-		// triggered by update to the redux store
-		this.setTrackerLatency(nextProps);
-		this.updateSiteNotScanned(nextProps);
-		if (nextProps.alertCounts.total !== this.props.alertCounts.total) {
-			this.updateTrackerCountAlert(nextProps);
-		}
+	static getDerivedStateFromProps(nextProps) {
+		const trackerLatencyTotal = Summary._computeTrackerLatency(nextProps);
+		const disableBlocking = Summary._computeSiteNotScanned(nextProps);
+
 		// Set page title for Firefox for Android
-		window.document.title = `Ghostery's findings for ${this.props.pageUrl}`;
+		window.document.title = `Ghostery's findings for ${nextProps.pageUrl}`;
+
+		return { trackerLatencyTotal, disableBlocking };
 	}
+
 	/**
-	* Calculate pageLatency and set to state
-	* @param {Object}	props	nextProps
-	*/
-	setTrackerLatency(props) {
+	 * Calculates total tracker latency
+	 * @param {Object} props Summary's props, either this.props or nextProps.
+	 */
+	static _computeTrackerLatency(props) {
 		const { performanceData } = props;
-		let pageLatency = '';
-		let unfixedLatency = '';
+		let pageLatency = 0;
 
 		// calculate and display page speed
 		if (performanceData) {
 			const { timing } = performanceData;
+			const { loadEventEnd, navigationStart } = timing;
 			// format number of decimal places to use
-			unfixedLatency = Number(timing.loadEventEnd - timing.navigationStart) / 1000;
+			const unfixedLatency = Number(loadEventEnd - navigationStart) / 1000;
 			if (unfixedLatency >= 100) { // > 100 no decimal
-				pageLatency = (Number(timing.loadEventEnd - timing.navigationStart) / 1000).toFixed();
+				pageLatency = unfixedLatency.toFixed();
 			} else if (unfixedLatency >= 10 && unfixedLatency < 100) { // 100 > 10 use one decimal
-				pageLatency = (Number(timing.loadEventEnd - timing.navigationStart) / 1000).toFixed(1);
-			} else if (unfixedLatency < 10) { // < 10s use two decimals
-				pageLatency = (Number(timing.loadEventEnd - timing.navigationStart) / 1000).toFixed(2);
+				pageLatency = unfixedLatency.toFixed(1);
+			} else if (unfixedLatency < 10 && unfixedLatency >= 0) { // < 10s use two decimals
+				pageLatency = unfixedLatency.toFixed(2);
 			}
-			this.setState({ trackerLatencyTotal: `${pageLatency}` });
+			return pageLatency;
+			// reset page load value if page is reloaded while panel is open
 		}
+		return null;
 	}
-	/**
-	 * Open feature drawer
-	 * @param  {Object} event clicking on feature button event
-	 */
-	openDrawer(event) {
-		if (this.state.disableBlocking || this.props.paused_blocking || this.props.sitePolicy !== false) { return; }
 
-		const type = event.target.value;
-		switch (type) {
-			case 'antiTrackBtn': {
-				if (!IS_CLIQZ) {
-					this.props.actions.openDrawer('enable_anti_tracking');
-				}
-				break;
-			}
-			case 'adBlockBtn': {
-				if (!IS_CLIQZ) {
-					this.props.actions.openDrawer('enable_ad_block');
-				}
-				break;
-			}
-			case 'smartBlockBtn': {
-				this.props.actions.openDrawer('enable_smart_block');
-				break;
-			}
-			default: {
-				break;
-			}
-		}
-	}
 	/**
-	 * Wrapper of toggleExpert call
+	 * Compute whether controls should be disabled.
+	 * @param {Object} props Summary's props, either this.props or nextProps.
 	 */
-	toExpert = () => {
-		if (!this.props.is_expert) {
-			this.toggleExpert();
-		}
-	}
-	/**
-	 * Toggle between simple and detail (expert) views
-	 */
-	toggleExpert() {
-		this.props.actions.toggleExpert();
-		if (this.props.is_expert) {
-			this.props.history.push('/');
-		} else {
-			this.props.history.push('/detail');
-		}
-	}
-	/**
-	* Disable controls for a site that cannot be scanned by
-	* Ghostery or has not yet been scanned.
-	* @param {Object}	props	nextProps
-	*/
-	updateSiteNotScanned(props) {
+	static _computeSiteNotScanned(props) {
 		const { siteNotScanned, categories } = props;
 		const pageUrl = props.pageUrl || '';
 
-		if (siteNotScanned || !categories || pageUrl.search('http') === -1) {
-			this.setState({ disableBlocking: true });
-		} else {
-			this.setState({ disableBlocking: false });
+		if (siteNotScanned || !categories || pageUrl.search(/http|chrome-extension|moz-extension|ms-browser-extension|newtab|chrome:\/\/startpage\//) === -1) {
+			return true;
 		}
+		return false;
 	}
-	/**
-	* Trigger actions which display notifications
-	* about slow or non-secure trackers.
-	* @param {Object}	props	nextProps
-	*/
-	updateTrackerCountAlert(props) {
-		const { alertCounts } = props;
 
-		if (alertCounts.total) {
-			// Set notification on Panel View
-			if (alertCounts.compatibility) {
-				if (BROWSER_INFO.name === 'edge') {
-					let text = t('panel_tracker_breaking_page');
-					text = text.replace('$1', alertCounts.compatibility);
-					text = text.replace('$2', (alertCounts.compatibility === 1) ? t('tracker_signular') : t('tracker_plural'));
-					props.actions.showNotification({
-						classes: 'hideous',
-						filter: 'compatibility',
-						text,
-					});
-				} else {
-					props.actions.showNotification({
-						classes: 'hideous',
-						filter: 'compatibility',
-						text: t(
-							'panel_tracker_breaking_page',
-							[alertCounts.compatibility,
-								(alertCounts.compatibility === 1) ? t('tracker_signular') : t('tracker_plural')],
-						),
-					});
-				}
-			} else if (BROWSER_INFO.name === 'edge') {
-				let text = t('panel_tracker_slow_non_secure');
-				text = text.replace('$1', alertCounts.total - alertCounts.compatibility);
-				text = text.replace('$2', (alertCounts.total - alertCounts.compatibility === 1) ? t('tracker_signular') : t('tracker_plural'));
-				props.actions.showNotification({
-					classes: 'hideous',
-					filter: 'slow',
-					text,
-				});
-			} else {
-				props.actions.showNotification({
-					classes: 'hideous',
-					filter: 'slow',
-					text: t(
-						'panel_tracker_slow_non_secure',
-						[alertCounts.total - alertCounts.compatibility,
-							(alertCounts.total - alertCounts.compatibility === 1) ? t('tracker_signular') : t('tracker_plural')],
-					),
-				});
-			}
-		}
+	/**
+	 * Lifecycle event
+	 */
+	componentDidMount() {
+		this._setTrackerLatency(this.props);
+		this._updateSiteNotScanned(this.props);
+
+		this._dynamicUIPort = this.context;
+		this._dynamicUIPort.onMessage.addListener(this.handlePortMessage);
+		this._dynamicUIPort.postMessage({ name: 'SummaryComponentDidMount' });
 	}
+
 	/**
-	* Implement handler for clicks on the 'trust' and 'restrict' buttons
-	* @param  {Object} event 	click event
-	*/
-	clickSitePolicy(event) {
-		const { ghosteryPaused, sitePolicy } = this.props;
-		const targetClasses = event.currentTarget.classList || [];
-		const type = targetClasses.contains('controls-trust') ? 'whitelist' : 'blacklist';
-		let updated_site_policy;
+	 * Lifecycle event
+	 */
+	componentWillUnmount() {
+		this._dynamicUIPort.postMessage({ name: 'SummaryComponentWillUnmount' });
+		this._dynamicUIPort.onMessage.removeListener(this.handlePortMessage);
+	}
 
-		if (this.state.disableBlocking || ghosteryPaused) {
-			return;
-		}
-
-		if (type === 'whitelist') {
-			sendMessage('ping', 'trust_site');
-			updated_site_policy = (sitePolicy === 1 || !sitePolicy) ? 2 : false;
-		} else {
-			sendMessage('ping', 'restrict_site');
-			updated_site_policy = (sitePolicy === 2 || !sitePolicy) ? 1 : false;
-		}
-
-		this.props.actions.updateSitePolicy({
-			type,
-		});
-
-		this.props.actions.filterTrackers({ type: 'trackers', name: 'all' });
-
-		this.props.actions.showNotification({
-			updated: type,
+	/**
+	 * Handles clicking on Cliqz Features: AntiTracking, AdBlocking, SmartBlocking
+	 * @param {Object} options options including:
+	 * 													feature: enable_anti_tracking, enable_ad_block, enable_smart_block
+	 * 													status: whether the feature should be turned on or off
+	 * 													text: the text for the notification.
+	 */
+	clickCliqzFeature(options) {
+		const { actions } = this.props;
+		const { feature, status, text } = options;
+		actions.showNotification({
+			updated: feature,
 			reload: true,
+			text,
 		});
+		actions.toggleCliqzFeature(feature, status);
 	}
 
 	/**
-	* Implement handler for clicks on the 'pause' button. Trigger appropriate actions.
-	*/
-	clickGhosteryPause(time) {
-		const ghosteryPaused = this.props.paused_blocking;
+	 * Handles clicking on any part of the Donut graph
+	 * @param  {Object} data Properties of the click and resulting filter
+	 */
+	clickDonut(data) {
+		const { actions, is_expert } = this.props;
+		if (!is_expert) { this.toggleExpert(); }
+		actions.filterTrackers(data);
+	}
+
+	/**
+	 * Handles clicking on the Pause Ghostery button.
+	 * @param  {number} time Optional number of minutes after which Ghostery should un-pause.
+	 */
+	clickPauseButton(time) {
+		const { actions, paused_blocking } = this.props;
+		const ghosteryPaused = paused_blocking;
+		const text = ghosteryPaused ? t('alert_ghostery_resumed') : t('alert_ghostery_paused');
 		sendMessage('ping', ghosteryPaused ? 'resume' : 'pause');
 		if (typeof time === 'number') {
 			sendMessage('ping', 'pause_snooze');
 		}
 
-		this.props.actions.updateGhosteryPaused({
+		actions.updateGhosteryPaused({
 			ghosteryPaused: (typeof time === 'number' ? true : !ghosteryPaused),
 			time: time * 60000,
 		});
-		this.props.actions.filterTrackers({ type: 'trackers', name: 'all' });
-		this.props.actions.showNotification({
+		actions.filterTrackers({ type: 'trackers', name: 'all' });
+		actions.showNotification({
 			updated: 'ghosteryPaused',
 			reload: true,
+			text,
 		});
 	}
-	/**
-	* Implement handler for clicking on the blocked tracker count. Trigger a filter action.
-	*/
-	clickTrackersBlocked(event) {
-		const { sitePolicy } = this.props;
 
-		if (sitePolicy === 1) {
-			this.props.actions.filterTrackers({ type: 'trackers', name: 'all' });
+	/**
+	 * Handles clicking on Ghostery Features: Trust Site, Restrict Site
+	 * @param  {String} button The button that was clicked: trust, restrict
+	 */
+	clickSitePolicy(button) {
+		const { actions, sitePolicy } = this.props;
+		let type;
+		let text;
+		let classes;
+
+		if (button === 'trust') {
+			sendMessage('ping', 'trust_site');
+			type = 'whitelist';
+			text = (sitePolicy === WHITELISTED) ? t('alert_site_trusted_off') : t('alert_site_trusted');
+			classes = (sitePolicy === WHITELISTED) ? 'warning' : 'success';
+		} else if (button === 'restrict') {
+			sendMessage('ping', 'restrict_site');
+			type = 'blacklist';
+			text = (sitePolicy === BLACKLISTED) ? t('alert_site_restricted_off') : t('alert_site_restricted');
+			classes = (sitePolicy === BLACKLISTED) ? 'warning' : 'alert';
 		} else {
-			this.props.actions.filterTrackers({ type: 'trackers', name: 'blocked' });
+			return;
+		}
+
+		actions.updateSitePolicy({
+			type,
+		});
+
+		actions.filterTrackers({ type: 'trackers', name: 'all' });
+
+		actions.showNotification({
+			updated: type,
+			reload: true,
+			classes,
+			text,
+		});
+	}
+
+	/**
+	 * Handles clicking on Trackers Blocked. Triggers a filter action
+	 */
+	clickTrackersBlocked() {
+		const { actions, sitePolicy, is_expert } = this.props;
+
+		if (!is_expert) { return; }
+
+		if (sitePolicy === BLACKLISTED) {
+			actions.filterTrackers({ type: 'trackers', name: 'all' });
+		} else {
+			actions.filterTrackers({ type: 'trackers', name: 'blocked' });
 		}
 	}
-	/**
-	* Implement handler for clicking on the slow and/or non-secure tracker count. Trigger a filter action.
-	*/
-	clickTrackersAlerts(event) {
-		this.props.actions.filterTrackers({ type: 'trackers', name: 'warning' });
-	}
 
 	/**
-	* Implement handler for clicking 'Map These Trackers' which opens Evidon page.
-	*/
-	clickMapTheseTrackers() {
-		sendMessage('ping', 'live_scan');
-		sendMessage('openNewTab', {
-			url: `https:\/\/www.evidon.com/solutions/trackermap/?url=${this.props.pageUrl}&utm_source=Ghostery&utm_medium=referral&utm_term=&utm_content=&utm_campaign=GhosteryMapTrackers`,
-			tab_id: +this.state.tab_id,
-			become_active: true,
-		});
-		window.close(); // for firefox
-	}
-	/**
-	 * Render Summary view.
-	 * @return {ReactComponent}   ReactComponent instance
+	 * Handles clicking on the total trackers count on the condensed view
 	 */
-	render() {
-		const showBody = (!this.props.is_expanded || !this.props.is_expert);
+	clickTrackersCount() {
+		const { actions } = this.props;
+		actions.filterTrackers({ type: 'trackers', name: 'all' });
+	}
 
-		const getTooltipClass = () => ((!this.props.is_expert && 'top')
-				|| ((this.props.is_expert && this.props.is_expanded) && 'right'));
+	/**
+	 * Handles clicking on the green upgrade banner or gold subscriber badge
+	 */
+	clickUpgradeBannerOrGoldPlusIcon() {
+		const { history, user } = this.props;
+		sendMessage('ping', 'plus_panel_from_badge');
 
-		const summaryClassNames = [
-			this.props.is_expanded && this.props.is_expert ? 'expanded' : '',
-			this.props.is_expert || this.props.is_android ? 'expert' : 'simple',
-			this.state.disableBlocking ? 'not-scanned' : '',
-		];
-		const loadInfoClasses = ClassNames('columns small-12 medium-4 text-left load-info g-tooltip', {
-			fast: +this.state.trackerLatencyTotal < 5,
-			slow: +this.state.trackerLatencyTotal > 10,
-		});
+		history.push(this._hasPremiumAccess() || this._hasPlusAccess() ? '/subscription/info' : `/subscribe/${!!user}`);
+	}
+
+	/**
+	 * Show the Stats view
+	 * Used to handle user clicking on the Stats Navicon
+	 */
+	showStatsView() {
+		const { history } = this.props;
+		history.push('/stats');
+	}
+
+	/**
+	 * Toggle between Simple and Detailed Views.
+	 */
+	toggleExpert(subview = 'blocking') {
+		const { actions, history, is_expert } = this.props;
+		actions.toggleExpert();
+		if (is_expert) {
+			history.push('/');
+		} else {
+			history.push(`/detail/${subview}`);
+		}
+	}
+
+	/**
+	 * Calculates total tracker latency and sets it to state
+	 * @param {Object} props Summary's props, either this.props or nextProps.
+	 */
+	_setTrackerLatency(props) {
+		const { performanceData } = this.props;
+		const trackerLatencyTotal = Summary._computeTrackerLatency(props);
+
+		if (props.performanceData || performanceData !== props.performanceData) {
+			this.setState({ trackerLatencyTotal });
+		}
+	}
+
+	/**
+	 * Disable controls when Ghostery cannot or has not yet scanned a page.
+	 * @param {Object} props Summary's props, either this.props or nextProps.
+	 */
+	_updateSiteNotScanned(props) {
+		const disableBlocking = Summary._computeSiteNotScanned(props);
+		this.setState({ disableBlocking });
+	}
+
+	/**
+	 * Handles messages from dynamic UI port to background
+	 * @param {Object}	msg		updated findings sent from the background by PanelData
+	 */
+	handlePortMessage(msg) {
+		const { actions } = this.props;
+		if (msg.to !== 'summary' || !msg.body) { return; }
+
+		const { body } = msg;
+
+		if (body.adBlock || body.antiTracking) {
+			actions.updateCliqzModuleData(body);
+		} else {
+			actions.updateSummaryData(body);
+		}
+	}
+
+	_hasPlusAccess() {
+		const { user } = this.props;
+
+		return user && user.plusAccess;
+	}
+
+	_hasPremiumAccess() {
+		const { user } = this.props;
+
+		return user && user.premiumAccess;
+	}
+
+	_pageHost() {
+		const { pageHost } = this.props;
+		return pageHost || 'page_host';
+	}
+
+	_hidePageHost(host = null) {
+		const pageHost = host || this._pageHost();
+
+		return (pageHost.split('.').length < 2);
+	}
+
+	_adBlockBlocked() {
+		const {
+			adBlock,
+			enable_ad_block,
+		} = this.props;
+
+		return (enable_ad_block && adBlock && adBlock.trackerCount) || 0;
+	}
+
+	_antiTrackUnsafe() {
+		const {
+			antiTracking,
+			enable_anti_tracking,
+		} = this.props;
+
+		return (enable_anti_tracking && antiTracking && antiTracking.trackerCount) || 0;
+	}
+
+	_requestsModifiedCount() {
+		return this._antiTrackUnsafe() + this._adBlockBlocked();
+	}
+
+	_totalTrackersFound() {
+		const { trackerCounts } = this.props;
+
+		return (trackerCounts.allowed + trackerCounts.blocked + this._requestsModifiedCount()) || 0;
+	}
+
+	_sbBlocked() {
+		const { smartBlock, trackerCounts } = this.props;
+
+		let sbBlocked = (smartBlock && smartBlock.blocked && Object.keys(smartBlock.blocked).length) || 0;
+		if (sbBlocked === trackerCounts.sbBlocked) {
+			sbBlocked = 0;
+		}
+
+		return sbBlocked;
+	}
+
+	_sbAllowed() {
+		const { smartBlock, trackerCounts } = this.props;
+
+		let sbAllowed = (smartBlock && smartBlock.unblocked && Object.keys(smartBlock.unblocked).length) || 0;
+		if (sbAllowed === trackerCounts.sbAllowed) {
+			sbAllowed = 0;
+		}
+
+		return sbAllowed;
+	}
+
+	_sbAdjust() {
+		const { enable_smart_block } = this.props;
+
+		return enable_smart_block && ((this._sbBlocked() - this._sbAllowed()) || 0);
+	}
+
+	_totalTrackersBlockedCount() {
+		const {
+			paused_blocking,
+			sitePolicy,
+			trackerCounts
+		} = this.props;
+
+		let totalTrackersBlockedCount;
+		if (paused_blocking || sitePolicy === WHITELISTED) {
+			totalTrackersBlockedCount = 0;
+		} else if (sitePolicy === BLACKLISTED) {
+			totalTrackersBlockedCount = trackerCounts.blocked + trackerCounts.allowed || 0;
+		} else {
+			totalTrackersBlockedCount = trackerCounts.blocked + this._sbAdjust() || 0;
+		}
+
+		return totalTrackersBlockedCount;
+	}
+
+	_isCondensed() {
+		const { is_expanded, is_expert } = this.props;
+
+		return (is_expert && is_expanded);
+	}
+
+	_isPageLoadFast() {
+		const { trackerLatencyTotal } = this.state;
+		return trackerLatencyTotal < 5;
+	}
+
+	_isPageLoadSlow() {
+		const { trackerLatencyTotal } = this.state;
+		return trackerLatencyTotal > 10;
+	}
+
+	_isPageLoadMedium() {
+		return !this._isPageLoadFast() && !this._isPageLoadSlow();
+	}
+
+	_isCliqzInactive() {
+		const { paused_blocking, sitePolicy } = this.props;
+		const { disableBlocking } = this.state;
+
+		return paused_blocking || sitePolicy || disableBlocking || IS_CLIQZ;
+	}
+
+	_isSmartBlockingInactive() {
+		const { paused_blocking, sitePolicy } = this.props;
+		const { disableBlocking } = this.state;
+
+		return paused_blocking || sitePolicy || disableBlocking;
+	}
+
+	/**
+	 * Render helper for the donut
+	 * @return {JSX} JSX for rendering the donut
+	 */
+	_renderDonut() {
+		const {
+			categories,
+			adBlock,
+			antiTracking,
+			is_expert,
+			paused_blocking,
+			sitePolicy,
+		} = this.props;
+
 		return (
-			<div id="content-summary" className={summaryClassNames.join(' ')}>
-				<button className="button hollow toggleExpert g-tooltip" onClick={this.toggleExpert}>
+			<div className="Summary__donutContainer">
+				<DonutGraph
+					categories={categories}
+					adBlock={adBlock}
+					antiTracking={antiTracking}
+					renderRedscale={sitePolicy === BLACKLISTED}
+					renderGreyscale={paused_blocking}
+					totalCount={this._totalTrackersFound()}
+					ghosteryFeatureSelect={sitePolicy}
+					isSmall={is_expert}
+					clickDonut={this.clickDonut}
+				/>
+			</div>
+		);
+	}
+
+	/**
+	 * Render helper for the page host readout
+	 * @return {JSX} JSX for rendering the page host readout
+	 */
+	_renderPageHostReadout() {
+		const pageHost = this._pageHost();
+		const pageHostContainerClassNames = ClassNames('Summary__pageHostContainer', {
+			invisible: this._hidePageHost(pageHost),
+		});
+
+		return (
+			<div className={pageHostContainerClassNames}>
+				<span className="SummaryPageHost">{pageHost}</span>
+			</div>
+		);
+	}
+
+	/**
+	 * Render helper for the total trackers found readout shown in condensed view
+	 * @return {JSX} JSX for rendering the condensed view total trackers found readout
+	 */
+	_renderTotalTrackersFound() {
+		return (
+			<div className="Summary__totalTrackerCountContainer clickable" onClick={this.clickTrackersCount}>
+				<span className="Summary__totalTrackerCount g-tooltip">
+					{this._totalTrackersFound()}
 					<Tooltip
-						header={this.props.is_expert ? t('tooltip_simple') : t('tooltip_expert')}
-						position={this.props.is_expert ? 'right' : 'left'}
+						header={t('panel_tracker_total_tooltip')}
+						position="right"
 					/>
-				</button>
-				{(!this.props.is_expanded || !this.props.is_expert) &&
-					<div className="row align-center">
-						<div className="columns">
-							<DonutGraph
-								categories={this.props.categories}
-								sitePolicy={this.props.sitePolicy}
-								pausedBlocking={this.props.paused_blocking}
-								trackerCounts={this.props.trackerCounts}
-								isExpert={this.props.is_expert}
-								actions={this.props.actions}
-								toExpert={this.toExpert}
-							/>
-						</div>
-					</div>
-				}
+				</span>
+			</div>
+		);
+	}
 
-				<div className="row tracker-count-total-expanded-expert">
-					<div className="columns small-12 text-center">
-						{this.props.trackerCounts.allowed + this.props.trackerCounts.blocked || 0}
-					</div>
+	/**
+	 * Render helper for the total trackers blocked readout
+	 * @return {JSX} JSX for rendering the total trackers blocked readout
+	 */
+	_renderTotalTrackersBlocked() {
+		const { is_expert } = this.props;
+
+		const totalTrackersBlockedContainerClassNames = ClassNames('Summary__pageStatContainer', {
+			clickable: is_expert,
+		});
+		const totalTrackersBlockedClassNames = ClassNames('SummaryPageStat', 'total-trackers-blocked', {
+			'SummaryPageStat--condensed-view': this._isCondensed(),
+		});
+
+		return (
+			<div className={totalTrackersBlockedContainerClassNames} onClick={this.clickTrackersBlocked}>
+				<div className={totalTrackersBlockedClassNames}>
+					<span className="SummaryPageStat__label">
+						{t('trackers_blocked')}
+						{' '}
+					</span>
+					<span className="SummaryPageStat__value">
+						{this._totalTrackersBlockedCount()}
+					</span>
 				</div>
+			</div>
+		);
+	}
 
-				<div id="tracker-host" className="row">
-					<div className="columns text-center">
-						{this.props.pageHost}
-					</div>
+	_renderTotalRequestsModified() {
+		const { is_expert } = this.props;
+
+		const totalRequestsModifiedClassNames = ClassNames('SummaryPageStat', 'g-tooltip', 'total-requests-modified', {
+			'SummaryPageStat--condensed-view': this._isCondensed(),
+		});
+
+		return (
+			<div className="Summary__pageStatContainer">
+				<div className={totalRequestsModifiedClassNames}>
+					<span className="SummaryPageStat__label">
+						{t('requests_modified')}
+						{' '}
+					</span>
+					<span className="SummaryPageStat__value">
+						{this._requestsModifiedCount()}
+					</span>
+					<Tooltip body={t('requests_modified_tooltip')} position={is_expert ? 'right' : 'top'} />
 				</div>
+			</div>
+		);
+	}
 
-				{ this.state.disableBlocking ?
-					<NotScanned />
-					:
-					<div className="row info align-center">
-						<div className="columns small-12 medium-4 text-right align-center block-info g-tooltip" onClick={this.clickTrackersBlocked}>
-							<span className="text">{t('summary_blocked')}:&nbsp;</span>
-							<span className="value">{this.props.trackerCounts.blocked}</span>
-							{ !showBody &&
-								<Tooltip
-									position="right"
-									header={t('summary_blocked')}
-								/>
-							}
-						</div>
-						<div className="columns small-12 medium-3 text-center alert-info g-tooltip" onClick={this.clickTrackersAlerts} >
-							<span className="text" style={{ visibility: this.props.alertCounts.total === 0 ? 'hidden' : 'visible' }}>{ (this.props.alertCounts.total === 1) ? t('summary_alert') : t('summary_alerts') }:&nbsp;</span>
-							<span className="value" style={{ visibility: this.props.alertCounts.total === 0 ? 'hidden' : 'visible' }}>{this.props.alertCounts.total}</span>
-							{ !showBody &&
-								<Tooltip
-									position="right"
-									header={t('page_load')}
-								/>
-							}
-						</div>
-						<div className={loadInfoClasses}>
-							<span className="text">{ t('page_load') }:&nbsp;</span>
-							<span className="value">{this.state.trackerLatencyTotal ? `${this.state.trackerLatencyTotal} ${t('settings_seconds')}` : '–'}</span>
-							{ !showBody &&
-							<Tooltip
-								position="right"
-								header={t('page_load')}
-							/>
-							}
+	_renderPageLoadTime() {
+		const { trackerLatencyTotal } = this.state;
+
+		const pageLoadTimeClassNames = ClassNames('SummaryPageStat', {
+			'page-load-time-slow': this._isPageLoadSlow(),
+			'page-load-time-medium': this._isPageLoadMedium(),
+			'page-load-time-fast': this._isPageLoadFast(),
+			'SummaryPageStat--condensed-view': this._isCondensed(),
+		});
+
+		return (
+			<div className="Summary__pageStatContainer">
+				<div className={pageLoadTimeClassNames}>
+					<span className="SummaryPageStat__label">
+						{t('page_load')}
+						{' '}
+					</span>
+					<span className="SummaryPageStat__value">
+						{trackerLatencyTotal ? `${trackerLatencyTotal} ${t('settings_seconds')}` : '-'}
+					</span>
+				</div>
+			</div>
+		);
+	}
+
+	_renderGhosteryFeature(type, ...modifiers) {
+		const {
+			is_expert,
+			paused_blocking,
+			sitePolicy,
+		} = this.props;
+		const { disableBlocking } = this.state;
+		const isCondensed = this._isCondensed();
+		const containerClassNames = ClassNames('Summary__ghosteryFeatureContainer', modifiers);
+
+		return (
+			<div className={containerClassNames}>
+				<GhosteryFeature
+					handleClick={this.clickSitePolicy}
+					type={type}
+					sitePolicy={sitePolicy}
+					blockingPausedOrDisabled={paused_blocking || disableBlocking}
+					showText={!this._isCondensed()}
+					tooltipPosition={is_expert ? 'right' : 'top'}
+					short={is_expert && !isCondensed}
+					narrow={isCondensed}
+				/>
+			</div>
+		);
+	}
+
+	_renderPauseButton() {
+		const {
+			is_expert,
+			paused_blocking,
+			paused_blocking_timeout,
+		} = this.props;
+
+		return (
+			<div className="Summary__pauseButtonContainer">
+				<PauseButton
+					isPaused={paused_blocking}
+					isPausedTimeout={paused_blocking_timeout}
+					clickPause={this.clickPauseButton}
+					dropdownItems={this.pauseOptions}
+					isCentered={is_expert}
+					isCondensed={this._isCondensed()}
+				/>
+			</div>
+		);
+	}
+
+	_renderCliqzAntiTracking() {
+		const {
+			enable_anti_tracking,
+			is_expert,
+			current_theme,
+		} = this.props;
+		const isCondensed = this._isCondensed();
+
+		return (
+			<div className="Summary__cliqzFeatureContainer">
+				<CliqzFeature
+					clickButton={this.clickCliqzFeature}
+					type="anti_track"
+					active={enable_anti_tracking}
+					cliqzInactive={this._isCliqzInactive()}
+					isSmaller={is_expert && !isCondensed}
+					isCondensed={isCondensed}
+					isTooltipHeader={is_expert}
+					isTooltipBody={!isCondensed}
+					tooltipPosition={isCondensed ? 'right' : is_expert ? 'top top-right' : 'top'}
+					current_theme={current_theme}
+				/>
+			</div>
+		);
+	}
+
+	_renderCliqzAdBlock() {
+		const {
+			enable_ad_block,
+			is_expert,
+			current_theme,
+		} = this.props;
+		const isCondensed = this._isCondensed();
+
+		return (
+			<div className="Summary__cliqzFeatureContainer">
+				<CliqzFeature
+					clickButton={this.clickCliqzFeature}
+					type="ad_block"
+					active={enable_ad_block}
+					cliqzInactive={this._isCliqzInactive()}
+					isSmaller={is_expert && !isCondensed}
+					isCondensed={is_expert && isCondensed}
+					isTooltipHeader={is_expert}
+					isTooltipBody={!isCondensed}
+					tooltipPosition={isCondensed ? 'right' : 'top'}
+					current_theme={current_theme}
+				/>
+			</div>
+		);
+	}
+
+	_renderCliqzSmartBlock() {
+		const {
+			enable_smart_block,
+			is_expert,
+			current_theme,
+		} = this.props;
+		const isCondensed = this._isCondensed();
+
+		return (
+			<div className="Summary__cliqzFeatureContainer">
+				<CliqzFeature
+					clickButton={this.clickCliqzFeature}
+					type="smart_block"
+					active={enable_smart_block}
+					cliqzInactive={this._isSmartBlockingInactive()}
+					isSmaller={is_expert && !isCondensed}
+					isCondensed={isCondensed}
+					isTooltipHeader={is_expert}
+					isTooltipBody={!isCondensed}
+					tooltipPosition={isCondensed ? 'right' : is_expert ? 'top top-left' : 'top'}
+					current_theme={current_theme}
+				/>
+			</div>
+		);
+	}
+
+	/**
+	 * Render helper for the stats navicon
+	 * @return {JSX} JSX for rendering the stats navicon
+	 */
+	_renderStatsNavicon() {
+		const { is_expert } = this.props;
+		const statsNaviconClassNames = ClassNames(
+			'Summary__statsNavicon',
+			'Summary__statsNavicon--absolutely-positioned',
+			'g-tooltip',
+			{
+				hide: is_expert,
+			}
+		);
+
+		return (
+			<div className={statsNaviconClassNames} onClick={this.showStatsView}>
+				<ReactSVG src="../../app/images/panel/graph.svg" />
+				<Tooltip body={t('historical_stats')} position="left" />
+			</div>
+		);
+	}
+
+	/**
+	 * Render helper for the plus upgrade banner or subscriber icon
+	 * @return {JSX} JSX for rendering the plus upgrade banner or subscriber icon
+	 */
+	_renderPlusUpgradeBannerOrSubscriberIcon() {
+		const { is_expert, current_theme, user } = this.props;
+
+		const hasPremiumAccess = user && user.premiumAccess;
+		const hasPlusAccess = user && user.plusAccess;
+		const upgradeBannerClassNames = ClassNames('UpgradeBanner', {
+			'UpgradeBanner--normal': !is_expert,
+			'UpgradeBanner--small': is_expert,
+		});
+
+		return (
+			<div onClick={this.clickUpgradeBannerOrGoldPlusIcon}>
+				{hasPremiumAccess && (
+					<div className="Summary__subscriberBadgeContainer">
+						<div className={`SubscriberBadge ${current_theme}`}>
+							<ReactSVG src="/app/images/panel/premium-badge-icon.svg" className="gold-plus-icon" />
 						</div>
 					</div>
-				}
+				)}
 
-				<div id="controls" className="row">
-					<div className="columns">
-						<div id="cliqz-controls">
-							<div className="row text-center">
-								<div className="columns medium-4">
-									<button value="antiTrackBtn" onClick={this.openDrawer} className={`${(this.state.disableBlocking || this.props.paused_blocking || this.props.sitePolicy !== false || IS_CLIQZ ? 'disabled' : '')} ${(this.props.enable_anti_tracking ? 'active' : '')} button controls-trust cliqz-control-btn anti-track-btn g-tooltip`} >
-										<Tooltip
-											header={t('tooltip_anti_track')}
-											body={showBody && t('tooltip_anti_track_body')}
-											position={`${showBody ? 'top' : 'right'} top-right`}
-										/>
-									</button>
-								</div>
-								<div className="columns medium-4">
-									<button value="adBlockBtn" onClick={this.openDrawer} className={`${(this.state.disableBlocking || this.props.paused_blocking || this.props.sitePolicy !== false || IS_CLIQZ ? 'disabled' : '')} ${(this.props.enable_ad_block ? 'active' : '')} button controls-restrict cliqz-control-btn ad-block-btn g-tooltip`}>
-										<Tooltip
-											header={t('tooltip_ad_block')}
-											body={showBody && t('tooltip_ad_block_body')}
-											position={showBody ? 'top' : 'right'}
-										/>
-									</button>
-								</div>
-								<div className="columns medium-4">
-									<button value="smartBlockBtn" onClick={this.openDrawer} className={`${(this.state.disableBlocking || this.props.paused_blocking || this.props.sitePolicy !== false ? 'disabled' : '')} ${(this.props.enable_smart_block ? 'active' : '')} button controls-pause cliqz-control-btn smart-block-btn g-tooltip`}>
-										<Tooltip
-											header={t('tooltip_smart_block')}
-											body={showBody && t('tooltip_smart_block_body')}
-											position={`${showBody ? 'top' : 'right'} top-left`}
-										/>
-									</button>
-								</div>
-							</div>
+				{hasPlusAccess && !hasPremiumAccess && (
+					<div className="Summary__subscriberBadgeContainer">
+						<div className={`SubscriberBadge ${current_theme}`}>
+							<ReactSVG src="/app/images/panel/plus-badge-icon.svg" className="gold-plus-icon" />
 						</div>
-						<div id="ghostery-controls">
-							<div className="row align-center text-center">
-								<div className="columns shrink">
-									<button onClick={this.clickSitePolicy} className={`${(this.state.disableBlocking || this.props.paused_blocking ? 'disabled' : '')} ${(this.props.sitePolicy === 2 ? 'active' : '')} button hollow blocking-controls controls-trust g-tooltip`}>
-										<div className="icon" />
-										<span className="title">{ t('summary_trust_site') }</span>
-										<span className="undo">{ t('summary_undo') }</span>
-										<Tooltip header={t('tooltip_trust')} position={showBody ? 'top' : 'right'} />
-									</button>
-								</div>
-								<div className="columns shrink">
-									<button onClick={this.clickSitePolicy} className={`${(this.state.disableBlocking || this.props.paused_blocking ? 'disabled' : '')} ${(this.props.sitePolicy === 1 ? 'active' : '')} button hollow blocking-controls controls-restrict g-tooltip`}>
-										<div className="icon" />
-										<span className="title">{ t('summary_restrict_site') }</span>
-										<span className="undo">{ t('summary_undo') }</span>
-										<Tooltip header={t('tooltip_restrict')} position={showBody ? 'top' : 'right'} />
-									</button>
-								</div>
-								<div className="columns shrink g-tooltip">
-									<SelectButton
-										active={this.props.paused_blocking}
-										iconClass="icon"
-										label={t('summary_pause_ghostery')}
-										altLabel={t('summary_resume_ghostery')}
-										callback={this.clickGhosteryPause}
-										menuItems={this.pauseOptions}
-										selectedItemValue={this.props.paused_blocking_timeout / 60000}
-									>
-										<Tooltip header={this.props.paused_blocking ? t('tooltip_resume') : t('tooltip_pause')} position={showBody ? 'top' : 'right'} />
-									</SelectButton>
-								</div>
-							</div>
-						</div>
-						{(this.props.is_expert && !this.props.is_expanded) &&
-							<div className="map-trackers" onClick={this.clickMapTheseTrackers}>{ t('summary_map_these_trackers') }</div>
-						}
 					</div>
+				)}
+
+				{(!hasPlusAccess && !hasPremiumAccess) && (
+					<div className="Summary__upgradeBannerContainer">
+						<div className={upgradeBannerClassNames}>
+							<span className="UpgradeBanner__text">{t('subscription_upgrade_to')}</span>
+							<ReactSVG src="/app/images/panel/upgrade-banner-plus.svg" className="UpgradeBanner__plus" />
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	/**
+	* React's required render function. Returns JSX
+	* @return {JSX} JSX for rendering the Summary View of the panel
+	*/
+	render() {
+		const {
+			is_expert,
+			is_expanded,
+			current_theme
+		} = this.props;
+		const { disableBlocking } = this.state;
+		const isCondensed = this._isCondensed();
+		const summaryClassNames = ClassNames('Summary', {
+			'Summary--simple': !is_expert,
+			'Summary--expert': is_expert && !is_expanded,
+			'Summary--condensed': isCondensed,
+		});
+		const foregroundClassNames = ClassNames('Summary__foreground', {
+			active: current_theme === 'palm-theme'
+					|| current_theme === 'leaf-theme',
+		});
+
+		return (
+			<div className={summaryClassNames}>
+				<div className="Summary__opacityOverlay" />
+				<div className={foregroundClassNames}>
+					{!isCondensed && disableBlocking && (<NotScanned isSmall={is_expert} />)}
+					{!isCondensed && !disableBlocking && this._renderDonut()}
+					{!isCondensed && !disableBlocking && this._renderPageHostReadout()}
+
+					{isCondensed && !disableBlocking && this._renderTotalTrackersFound()}
+
+					<div className="Summary__pageStatsContainer">
+						{!disableBlocking && this._renderTotalTrackersBlocked()}
+						{!disableBlocking && this._renderTotalRequestsModified()}
+						{!disableBlocking && this._renderPageLoadTime()}
+					</div>
+
+					{isCondensed && disableBlocking && (
+						<div className="Summary__spaceTaker" />
+					)}
+
+					<div className="Summary__ghosteryFeaturesContainer">
+						{this._renderGhosteryFeature('trust')}
+						{this._renderGhosteryFeature('restrict', 'Summary__ghosteryFeatureContainer--middle')}
+						{this._renderPauseButton()}
+					</div>
+					<div className="Summary__cliqzFeaturesContainer">
+						{this._renderCliqzAntiTracking()}
+						{this._renderCliqzAdBlock()}
+						{this._renderCliqzSmartBlock()}
+					</div>
+					{this._renderStatsNavicon()}
+
+					{!isCondensed && this._renderPlusUpgradeBannerOrSubscriberIcon()}
 				</div>
 			</div>
 		);

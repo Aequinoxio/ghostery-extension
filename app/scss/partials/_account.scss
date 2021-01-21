@@ -1,11 +1,11 @@
 /**
- * Acount Panel Sass
+ * Account Panel Sass
  *
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
- * 
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
@@ -32,6 +32,11 @@ label {
 		font-weight: 600;
 		font-size: 14px;
 		color: #2092BF;
+	}
+	&:not(.hollow) {
+		&:hover, &:focus {
+			background-color: $ghosty-blue;
+		}
 	}
 }
 span.asterisk {
@@ -60,6 +65,11 @@ p.warning {
 	}
 	label {
 		color: #CC5F5A;
+	}
+}
+.checkbox-error {
+	label {
+		color: #a94442;
 	}
 }
 
@@ -113,14 +123,18 @@ p.warning {
 }
 
 /* CREATE ACCOUNT PANEL */
-#create-account-panel{
-	margin-top: 10px;
-	input {margin-bottom: 5px;}
-	p.warning {margin-bottom: 5px;}
+#create-account-panel {
+	margin-top: 25px;
+	input {
+		margin-bottom: 5px;
+		margin-top: 5px;
+	}
+	p.warning {}
 	#create-account-first-name, #create-account-last-name {
-		margin-bottom: 20px; //compensation for no .warning elements
+		margin-bottom: 15px; //compensation for no .warning elements
 	}
 	#create-account-password {
+		margin-bottom: 10px;
 		p.warning {
 			#password-length-requirement,
 			#password-characters-requirement {
@@ -131,45 +145,84 @@ p.warning {
 			}
 		}
 	}
-	#create-account-privacy-container {
+	#create-account-legal-consent-checkbox {
+		margin-bottom: 10px;
 		label {
-			font-size: 13px;
+			font-size: 11px;
+			font-weight: 500;
+			vertical-align: top;
+			margin-right: 0;
+			max-width: 94%;
+		}
+	}
+	#create-account-privacy-container {
+		p#accept-privacy-label {
+			font-size: 12px;
 			line-height: 16px;
 			font-weight: 400;
 		}
-		input {
-			float: left;
-			margin-right: 12px;
-			position: relative;
-			top: 3px;
-			margin-bottom: 30px;
-		}
 	}
-	#account-creation-buttons .button {margin-bottom: 0;}
-	#accept-privacy-requirement {
-		margin-left: 22px;
-		margin-top: 3px;
+	#account-creation-buttons .button {
+		margin: 20px 0 0;
+		width: 150px;
 	}
 }
 
 /* SIGNIN SUCCESS PANEL */
 #signin-success-panel {
-	margin-top: 75px;
-	h3 {
-		color: #394045;
-		font-size: 18px;
-		font-weight: 400;
+	margin-top: 39px;
+	.signin-success-title {
+		margin-bottom: 15px;
+		color: $tundora;
+		font-size: 21px;
 	}
-	.big-ghosty {
-		background: url('../../app/images/panel/ghosty_signin.png') no-repeat center center;
-		background-size: auto 73px;
-		height: 115px;
+	.signin-success-email {
+		margin-bottom: 17px;
+		color: $ghosty-blue;
+		font-size: 16px;
+	}
+	.premium-sparkles-icon {
+		margin-bottom: 16px;
+		background: url('../../app/images/panel/premium-sparkles-icon.svg') no-repeat center center;
+		height: 29px;
+	}
+	.signin-premium-benefits {
+		margin: 0 auto 24px auto;
+		width: 442px;
+		color: $tundora;
+		font-size: 16px;
+		font-weight: bold;
+		line-height: 1.75;
 	}
 	p {
+		margin-bottom: 4px;
 		color: #9B9B9B;
-		font-size: 13px;
+		font-size: 16px;
 		font-weight: 300;
-		line-height: 21px;
 	}
-	#view-trackers-button {margin-top: 30px;}
+	.learn-more-button {
+		margin: 0 auto 24px auto;
+		width: 184px;
+		height: 50px;
+		border-radius: 4px;
+		background-image: linear-gradient(104deg, #720174, #00aef0 99%);
+
+		cursor: pointer;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		font-size: 16px;
+		letter-spacing: 0.5px;
+		color: #ffffff;
+
+		&:hover {
+			background-image: linear-gradient(101deg, #A80AAB 19%, #41BCEA 100%);
+		}
+	}
+	.no-thanks-maybe-later {
+		color: $tundora;
+		font-size: 16px;
+		text-decoration: underline;
+	}
 }

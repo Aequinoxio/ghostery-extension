@@ -6,7 +6,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,30 +16,32 @@
 import parser from 'ua-parser-js';
 
 const manifest = chrome.runtime.getManifest();
+const isCliqzBrowser = !!(chrome.runtime.isCliqz);
+
 /**
  * Structure which holds parameters to be used throughout the code, a.k.a. global values.
- * Most of them (but not all) are const.
+ * Most of them (but not all) are constants.
  * @memberOf  BackgroundClasses
  */
 class Globals {
 	constructor() {
 		// environment variables
 		this.DEBUG = manifest.debug || false;
-		this.LOG = this.DEBUG && manifest.log;
 		this.EXTENSION_NAME = manifest.name || 'Ghostery';
 		this.EXTENSION_VERSION = manifest.version_name || manifest.version; // Firefox does not support "version_name"
 		this.BROWSER_INFO = {
 			displayName: '', name: '', token: '', version: '', os: 'other'
 		};
-		this.IS_CLIQZ = !!((manifest.applications && manifest.applications.gecko && manifest.applications.gecko.update_url));
+		this.BROWSER_INFO_READY = this.buildBrowserInfo();
+		this.IS_CLIQZ = !!((manifest.applications && manifest.applications.gecko && manifest.applications.gecko.update_url) || isCliqzBrowser);
 
 		// flags
 		this.JUST_INSTALLED = false;
 		this.JUST_UPGRADED = false;
 		this.JUST_UPGRADED_FROM_7 = false;
+		this.REQUIRE_LEGACY_OPT_IN = false;
 		this.HOTFIX = false;
 		this.LET_REDIRECTS_THROUGH = false;
-		this.C2P_LOADED = false;
 		this.NOTIFICATIONS_LOADED = false;
 		this.upgrade_alert_shown = false;
 
@@ -48,12 +50,30 @@ class Globals {
 		this.initProps = {};
 
 		// domains
-		this.GHOSTERY_DOMAIN = this.DEBUG ? 'ghosterystage' : 'ghostery';
-		this.METRICS_SUB_DOMAIN = this.DEBUG ? 'staging-d' : 'd';
-		this.CMP_SUB_DOMAIN = this.DEBUG ? 'staging-cmp-cdn' : 'cmp-cdn';
-		this.CDN_SUB_DOMAIN = this.DEBUG ? 'staging-cdn' : 'cdn';
-		this.APPS_SUB_DOMAIN = this.DEBUG ? 'staging-apps' : 'apps';
-		this.GCACHE_SUB_DOMAIN = this.DEBUG ? 'staging-gcache' : 'gcache';
+		this.GHOSTERY_ROOT_DOMAIN = `${this.DEBUG ? 'ghosterystage' : 'ghostery'}.com`;
+		this.GHOSTERY_BASE_URL = `https://${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.ACCOUNT_BASE_URL = `https://account.${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.CHECKOUT_BASE_URL = `https://checkout.${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.METRICS_BASE_URL = `https://${this.DEBUG ? 'staging-d' : 'd'}.ghostery.com`;
+		this.CMP_BASE_URL = `https://${this.DEBUG ? 'staging-cmp-cdn' : 'cmp-cdn'}.ghostery.com`;
+		this.CDN_BASE_URL = `https://${this.DEBUG ? 'staging-cdn' : 'cdn'}.ghostery.com`;
+		this.APPS_BASE_URL = `https://${this.DEBUG ? 'staging-apps' : 'apps'}.ghostery.com`;
+		this.GCACHE_BASE_URL = `https://${this.DEBUG ? 'staging-gcache' : 'gcache'}.ghostery.com`;
+		this.AUTH_SERVER = `https://consumerapi.${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.ACCOUNT_SERVER = `https://accountapi.${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.COOKIE_DOMAIN = `.${this.GHOSTERY_ROOT_DOMAIN}`;
+		this.COOKIE_URL = this.GHOSTERY_BASE_URL;
+
+		// extension IDs
+		this.GHOSTERY_TAB_CHROME_PRODUCTION_ID = 'plmapebanmikcofllaaddgeocahboejc';
+		this.GHOSTERY_TAB_CHROME_PRERELEASE_ID = 'fenghpkndeggbbpjeojffgbmdmnaelmf';
+		this.GHOSTERY_TAB_CHROME_TEST_ID = 'ifnpgdmcliingpambkkihjlhikmbbjid';
+		this.GHOSTERY_TAB_FIREFOX_PRODUCTION_ID = 'firefoxtab@ghostery.com';
+		this.GHOSTERY_TAB_FIREFOX_TEST_ID = '{0ea88bc4-03bd-4baa-8153-acc861589c1c}';
+
+		// Site Policy named constants
+		this.BLACKLISTED = 1;
+		this.WHITELISTED = 2;
 
 		// data stores
 		this.REDIRECT_MAP = new Map();
@@ -74,6 +94,9 @@ class Globals {
 			'alert_bubble_timeout',
 			'alert_expanded',
 			'block_by_default',
+			'cliqz_adb_mode',
+			'cliqz_module_whitelist',
+			'current_theme',
 			'enable_ad_block',
 			'enable_anti_tracking',
 			'enable_autoupdate',
@@ -81,7 +104,7 @@ class Globals {
 			'enable_click2play_social',
 			'enable_human_web',
 			'enable_metrics',
-			'enable_offers',
+			'enable_abtests',
 			'enable_smart_block',
 			'expand_all_trackers',
 			'hide_alert_trusted',
@@ -90,6 +113,7 @@ class Globals {
 			'is_expanded',
 			'is_expert',
 			'notify_library_updates',
+			'notify_promotions',
 			'notify_upgrade_updates',
 			'reload_banner_status',
 			'selected_app_ids',
@@ -97,10 +121,8 @@ class Globals {
 			'show_badge',
 			'show_cmp',
 			'show_tracker_urls',
-			'site_blacklist',
 			'site_specific_blocks',
 			'site_specific_unblocks',
-			'site_whitelist',
 			'toggle_individual_trackers',
 			'trackers_banner_status',
 		];
@@ -111,18 +133,16 @@ class Globals {
 			abtests: {},
 			cmp_data: {}
 		};
-
-		this.buildBrowserInfo();
 	}
 
 	/**
 	 * Gets UA and Platform strings for current browser
-	 * @return {Object}
+	 * @return {Promise}
 	 */
 	buildBrowserInfo() {
 		const ua = parser(navigator.userAgent);
 		const browser = ua.browser.name.toLowerCase();
-		const { version } = ua.browser;
+		const version = parseInt(ua.browser.version.toString(), 10); // convert to string for Chrome
 		const platform = ua.os.name.toLowerCase();
 
 		// Set name and token properties. CMP uses `name` value.  Metrics uses `token`
@@ -165,6 +185,35 @@ class Globals {
 
 		// Set version property
 		this.BROWSER_INFO.version = version;
+
+		// Check for Ghostery browsers
+		return Globals._checkBrowserInfo().then((info) => {
+			if (info && info.name === 'Ghostery') {
+				if (platform.includes('android')) {
+					this.BROWSER_INFO.displayName = 'Ghostery Android Browser';
+					this.BROWSER_INFO.name = 'ghostery_android';
+					this.BROWSER_INFO.token = 'ga';
+					this.BROWSER_INFO.os = 'android';
+				} else {
+					this.BROWSER_INFO.displayName = 'Ghostery Desktop Browser';
+					this.BROWSER_INFO.name = 'ghostery_desktop';
+					this.BROWSER_INFO.token = 'gd';
+				}
+				this.BROWSER_INFO.version = info.version;
+			}
+		});
+	}
+
+	/**
+	* Check for information about this browser (FF only)
+	* @private
+	* @return {Promise}
+	*/
+	static _checkBrowserInfo() {
+		if (typeof chrome.runtime.getBrowserInfo === 'function') {
+			return chrome.runtime.getBrowserInfo();
+		}
+		return Promise.resolve(false);
 	}
 }
 

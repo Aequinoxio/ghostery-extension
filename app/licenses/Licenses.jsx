@@ -4,15 +4,14 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
-import Markdown from 'react-remarkable';
 import licenses from '../../tools/licenses/licenses.json';
 import License from './License';
 
@@ -32,9 +31,10 @@ class Licenses extends React.Component {
 	 * Wrapper function for dangerouslySetInnerHTML. Provides extra security
 	 * @return {Object}
 	 */
-	createFooterMarkup() {
-		return { __html: t('setup_footer_license') };
+	static createFooterMarkup() {
+		return { __html: t('license_footer') };
 	}
+
 	/**
 	 * Render page.
 	 * @return {ReactComponent}   ReactComponent instance
@@ -47,7 +47,7 @@ class Licenses extends React.Component {
 			<div id="licenses-page">
 				<div id="header" className="row padded-content expanded valign-middle">
 					<div className="column medium-2">
-						<img className="logo" src="/app/images/setup/logo-title-white.svg" />
+						<img className="logo" src="/app/images/licenses/logo-title-white.svg" />
 					</div>
 					<div className="column" />
 					<div className="column medium-6 text-right">
@@ -60,7 +60,7 @@ class Licenses extends React.Component {
 					<div className="license-list">{ list }</div>
 				</div>
 				<div id="footer">
-					<div className="columns copyright text-center" dangerouslySetInnerHTML={this.createFooterMarkup()} />
+					<div className="columns copyright text-center" dangerouslySetInnerHTML={Licenses.createFooterMarkup()} />
 				</div>
 			</div>
 		);

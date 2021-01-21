@@ -4,14 +4,14 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-import React, { Component } from 'react';
+import React from 'react';
 import globals from '../../../../src/classes/Globals';
 import { log } from '../../../../src/utils/common';
 import { sendMessageInPromise } from '../../utils/msg';
@@ -39,23 +39,25 @@ class GlobalTracker extends React.Component {
 		this.toggleDescription = this.toggleDescription.bind(this);
 		this.clickTrackerStatus = this.clickTrackerStatus.bind(this);
 	}
+
 	/**
 	 * Implement handler for clicking on the tracker title
 	 * which shows/hides tracker description. On show it retrieves
 	 * description from https://apps.ghostery.com and sets it in state.
 	 */
 	toggleDescription() {
-		const { tracker } = this.props;
-		this.setState({ showMoreInfo: !this.state.showMoreInfo });
+		const { tracker, language } = this.props;
+		const { description } = this.state;
+		this.setState(prevState => ({ showMoreInfo: !prevState.showMoreInfo }));
 
-		if (this.state.description) {
+		if (description) {
 			return;
 		}
 
 		this.setState({ description: t('tracker_description_getting') });
 
 		sendMessageInPromise('getTrackerDescription', {
-			url: `https:\/\/${globals.APPS_SUB_DOMAIN}.ghostery.com/${this.props.language}/apps/${
+			url: `${globals.APPS_BASE_URL}/${language}/apps/${
 				encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}?format=json`,
 		}).then((data) => {
 			if (data) {
@@ -70,6 +72,7 @@ class GlobalTracker extends React.Component {
 			this.setState({ description: t('tracker_description_none_found') });
 		});
 	}
+
 	/**
 	 * Implement handler for clicking on the tracker block/unblock checkbox.
 	 * Trigger action which persists new tracker blocked state and spawns re-rendering
@@ -77,22 +80,27 @@ class GlobalTracker extends React.Component {
 	 * @todo  Toast shows always. It does not reflect actual success.
 	 */
 	clickTrackerStatus() {
-		const isBlocked = !this.props.tracker.blocked;
-		this.props.actions.updateTrackerBlocked({
-			app_id: this.props.tracker.id,
-			cat_id: this.props.cat_id,
+		const {
+			actions, tracker, cat_id, showToast
+		} = this.props;
+		const isBlocked = !tracker.blocked;
+		actions.updateTrackerBlocked({
+			app_id: tracker.id,
+			cat_id,
 			blocked: isBlocked,
 		});
-		this.props.showToast({
+		showToast({
 			text: t('global_settings_saved_tracker')
 		});
 	}
+
 	/**
 	* Render a tracker in Global Blocking subview of Settings.
 	* @return {ReactComponent}   ReactComponent instance
 	*/
 	render() {
-		const { tracker } = this.props;
+		const { tracker, language } = this.props;
+		const { showMoreInfo, description, showTrackerLearnMore } = this.state;
 		return (
 			<div className="global-blocking-trk">
 				<div className="row align-middle trk-header">
@@ -104,20 +112,22 @@ class GlobalTracker extends React.Component {
 					</div>
 				</div>
 				{
-					this.state.showMoreInfo &&
-					<div className="row align-middle">
-						<div className="columns global-trk-desc">
-							{ this.state.description }
-							{
-								this.state.showTrackerLearnMore &&
-								<div className={(!this.state.showTrackerLearnMore ? 'hide' : '')}>
-									<a target="_blank" title={tracker.name} href={`https://${globals.APPS_SUB_DOMAIN}.ghostery.com/${this.props.language}/apps/${encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}`}>
-										{ t('tracker_description_learn_more') }
-									</a>
-								</div>
-							}
+					showMoreInfo && (
+						<div className="row align-middle">
+							<div className="columns global-trk-desc">
+								{ description }
+								{
+									showTrackerLearnMore && (
+										<div className={(!showTrackerLearnMore ? 'hide' : '')}>
+											<a target="_blank" rel="noopener noreferrer" title={tracker.name} href={`${globals.APPS_BASE_URL}/${language}/apps/${encodeURIComponent(tracker.name.replace(/\s+/g, '_').toLowerCase())}`}>
+												{ t('tracker_description_learn_more') }
+											</a>
+										</div>
+									)
+								}
+							</div>
 						</div>
-					</div>
+					)
 				}
 			</div>
 		);

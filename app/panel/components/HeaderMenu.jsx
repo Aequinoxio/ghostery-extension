@@ -4,19 +4,17 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0
  */
 
-/* eslint no-useless-concat: 0 */
+import React from 'react';
+import ClassNames from 'classnames';
 
-import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import { Link } from 'react-router-dom';
-import ClickOutside from './helpers/ClickOutside';
+import ClickOutside from './BuildingBlocks/ClickOutside';
 import { sendMessage, sendMessageInPromise } from '../utils/msg';
 import globals from '../../../src/classes/Globals';
 import { log } from '../../../src/utils/common';
@@ -26,43 +24,34 @@ import { log } from '../../../src/utils/common';
  * @memberof PanelClasses
  */
 class HeaderMenu extends React.Component {
-	constructor(props) {
-		super(props);
-
-		// event bindings
-		this.handleClickOutside = this.handleClickOutside.bind(this);
-		this.clickSettings = this.clickSettings.bind(this);
-		this.clickBrokenPage = this.clickBrokenPage.bind(this);
-		this.clickSubmitTracker = this.clickSubmitTracker.bind(this);
-		this.clickSignedInAs = this.clickSignedInAs.bind(this);
-		this.clickSignIn = this.clickSignIn.bind(this);
-		this.clickSignOut = this.clickSignOut.bind(this);
-	}
 	/**
 	 * Handle clicks outside of the drop-down menu and trigger action.
-	 * @param  {Object} evt mouseclick event
+	 * @param  {Object} e mouseclick event
 	 */
-	handleClickOutside(evt) {
-		// eslint-disable-next-line react/no-find-dom-node
-		if (!ReactDOM.findDOMNode(this).contains(evt.target)) {
-			this.props.toggleDropdown();
+	handleClickOutside = (e) => {
+		const { toggleDropdown } = this.props;
+		if (!this.node.contains(e.target)) {
+			toggleDropdown();
 		}
 	}
+
 	/**
 	 * Trigger action which open Settings panel from drop-down menu Settings item.
 	 */
-	clickSettings() {
-		this.props.toggleDropdown();
-		this.props.history.push('/settings');
+	clickSettings = () => {
+		const { history, toggleDropdown } = this.props;
+		toggleDropdown();
+		history.push('/settings/globalblocking');
 	}
+
 	/**
 	 * Handle click on 'Report a broken page' menu item.
 	 * Currently invokes default 'mailto' handler, and often does not work.
 	 * @todo  Should send broken page data to a 'Report a broken page' site.
 	 */
-	clickBrokenPage() {
+	clickBrokenPage = () => {
 		sendMessageInPromise('getSiteData').then((data) => {
-			let body = `${'PLEASE INCLUDE A DESCRIPTION AND A PICTURE OF THE ISSUE YOU ARE EXPERIENCING:' + '\r\n\r\n\r\n\r\n\r\n\r\n' +
+			let body = `${'PLEASE INCLUDE A DESCRIPTION AND A PICTURE OF THE ISSUE YOU ARE EXPERIENCING:\r\n\r\n\r\n\r\n\r\n\r\n' +
 					'URL: '}${data.url}\r\n` +
 					`Ghostery version: ${data.extensionVersion}\r\n` +
 					`Database Version: ${data.dbVersion}\r\n` +
@@ -93,30 +82,51 @@ class HeaderMenu extends React.Component {
 				url,
 				become_active: true,
 			});
-		}).catch((err) => {
+			window.close();
+		}).catch(() => {
 			log('Error gathering page data');
 		});
-		window.close();
 	}
+
 	/**
 	 * Handle click on 'Submit a new tracker' menu item.
-	 * It should naviaget to a site where tracker data can be entered.
+	 * It should navigate to a site where tracker data can be entered.
 	 */
-	clickSubmitTracker() {
+	clickSubmitTracker = () => {
 		sendMessage('openNewTab', {
-			url: 'https:\/\/www.ghostery.com/support/submit-tracker/',
+			url: 'https://www.ghostery.com/support/submit-tracker/',
 			become_active: true,
 		});
 		window.close();
 	}
 
 	/**
+	 * Handle click on 'Help' menu item.
+	 * It should open Help view.
+	 */
+	clickHelp = () => {
+		const { history, toggleDropdown } = this.props;
+		toggleDropdown();
+		history.push('/help');
+	}
+
+	/**
+	 * Handle click on 'About' menu item.
+	 * It should open About view.
+	 */
+	clickAbout = () => {
+		const { history, toggleDropdown } = this.props;
+		toggleDropdown();
+		history.push('/about');
+	}
+
+	/**
 	 * Handle click on the user name, displayed on the menu when a
 	 * user is in logged in state, and navigate to the user's profile page.
 	 */
-	clickSignedInAs() {
+	clickSignedInAs = () => {
 		sendMessage('openNewTab', {
-			url: `https:\/\/account.${globals.GHOSTERY_DOMAIN}.com/`,
+			url: `${globals.ACCOUNT_BASE_URL}/`,
 			become_active: true,
 		});
 		window.close();
@@ -125,29 +135,60 @@ class HeaderMenu extends React.Component {
 	/**
 	 * Handle click on 'Sign in' menu item and navigate to Login panel.
 	 */
-	clickSignIn() {
-		sendMessage('ping', 'sign_in');
-		this.props.toggleDropdown();
-		this.props.history.push('/login');
+	clickSignIn = () => {
+		const { history, toggleDropdown } = this.props;
+		toggleDropdown();
+		history.push('/login');
 	}
+
 	/**
 	 * Handle click on 'Sign out' menu item (if user is in logged in state) and log out the user.
 	 */
-	clickSignOut() {
-		this.props.toggleDropdown();
-		this.props.actions.userLogout();
+	clickSignOut = () => {
+		const { actions, toggleDropdown } = this.props;
+		toggleDropdown();
+		actions.logout();
 	}
+
+	/**
+	 * Handle click on Subscriber menu item.
+	 */
+	clickSubscriber = () => {
+		const {
+			history, hasPremiumAccess, hasPlusAccess, toggleDropdown
+		} = this.props;
+		sendMessage('ping', 'plus_panel_from_menu');
+		toggleDropdown();
+		history.push(hasPlusAccess || hasPremiumAccess ? '/subscription/info' : '/subscribe/false');
+	}
+
 	/**
 	 * Render drop-down menu.
 	 * @return {ReactComponent}   ReactComponent instance
 	 */
 	render() {
+		const {
+			loggedIn,
+			email,
+			hasPremiumAccess,
+			hasPlusAccess,
+			kebab
+		} = this.props;
+		const optionClasses = ClassNames({
+			'menu-option': hasPlusAccess || hasPremiumAccess,
+			'menu-option-non-subscriber': !(hasPlusAccess || hasPremiumAccess)
+		});
+		const iconClasses = ClassNames('menu-icon-container', {
+			premium: hasPremiumAccess,
+			plus: !hasPremiumAccess && hasPlusAccess,
+			'non-subscriber': !(hasPremiumAccess || hasPlusAccess)
+		});
 		return (
-			<ClickOutside onClickOutside={this.handleClickOutside} excludeEl={this.props.kebab}>
-				<div className="dropdown-pane" id="header-dropdown">
+			<ClickOutside onClickOutside={this.handleClickOutside} excludeEl={kebab}>
+				<div ref={(node) => { this.node = node; }} className="dropdown-pane" id="header-dropdown">
 					<ul className="vertical menu no-bullet icons icon-left">
-						<li className="menu-option menu-settings">
-							<Link to="/settings/globalblocking" onClick={this.clickSettings}>
+						<li className="menu-option menu-settings" onClick={this.clickSettings}>
+							<div>
 								<div className="menu-icon-container">
 									<svg width="18px" height="18px" viewBox="0 0 18 18">
 										<g>
@@ -156,7 +197,7 @@ class HeaderMenu extends React.Component {
 									</svg>
 								</div>
 								<span>{ t('panel_menu_settings') }</span>
-							</Link>
+							</div>
 						</li>
 						<li onClick={this.clickBrokenPage} className="menu-option menu-broken-page">
 							<div className="menu-icon-container">
@@ -172,16 +213,16 @@ class HeaderMenu extends React.Component {
 						</li>
 						<li onClick={this.clickSubmitTracker} className="menu-option menu-submit-tracker">
 							<div className="menu-icon-container">
-								<svg width="16px" height="16px" viewBox="0 0 16 16">
+								<svg width="16px" height="17px" viewBox="0 0 16 17">
 									<g>
-										<path className="menu-icon" d="M15.6817156,6.13639018 C15.4695724,5.92424705 15.2119601,5.81824522 14.9088785,5.81824522 L10.1816153,5.81824522 L10.1816153,1.09084252 C10.1816153,0.787900449 10.075474,0.530288105 9.86347034,0.318144968 C9.6513272,0.106141307 9.39385433,0 9.09063331,0 L6.90894826,0 C6.60600619,0 6.34839385,0.106001831 6.13625071,0.318144968 C5.92410757,0.530288105 5.81810574,0.787900449 5.81810574,1.09084252 L5.81810574,5.81824522 L1.09084252,5.81824522 C0.787900449,5.81824522 0.530288105,5.92424705 0.318144968,6.13639018 C0.106001831,6.34853332 0,6.60600619 0,6.90908774 L0,9.09105174 C0,9.39413329 0.106001831,9.65160615 0.318144968,9.86360982 C0.530288105,10.075753 0.787900449,10.1817548 1.09084252,10.1817548 L5.81810574,10.1817548 L5.81810574,14.909297 C5.81810574,15.212239 5.92410757,15.4699908 6.13625071,15.6819945 C6.34839385,15.8939982 6.60600619,16 6.90894826,16 L9.09077278,16 C9.39399381,16 9.65146668,15.8939982 9.86360982,15.6819945 C10.075753,15.4698514 10.1817548,15.212239 10.1817548,14.909297 L10.1817548,10.1817548 L14.909018,10.1817548 C15.2120996,10.1817548 15.4697119,10.075753 15.681855,9.86360982 C15.8938587,9.65160615 16,9.39413329 16,9.09105174 L16,6.90908774 C15.9998605,6.60600619 15.8939982,6.34839385 15.6817156,6.13639018 L15.6817156,6.13639018 Z" />
+										<path className="menu-icon" d="M8.658 4.996a.943.943 0 0 0-1.316 0L3.04 9.298a.934.934 0 0 0 0 1.333.934.934 0 0 0 1.333 0L7.076 7.93v8.124c0 .516.426.943.942.943a.948.948 0 0 0 .942-.943V7.93l2.702 2.702a.934.934 0 0 0 1.334 0 .934.934 0 0 0 0-1.333L8.658 4.996z M1.049 5.742A.948.948 0 0 0 1.99 4.8V1.956h12.036V4.8c0 .516.426.942.942.942a.948.948 0 0 0 .942-.942V1.031a.948.948 0 0 0-.94-.941H1.049a.948.948 0 0 0-.942.942v3.787c0 .515.409.924.942.924z" />
 									</g>
 								</svg>
 							</div>
 							<span>{ t('panel_menu_submit_tracker') }</span>
 						</li>
-						<li className="menu-option menu-help">
-							<Link to="/help" onClick={this.props.toggleDropdown}>
+						<li className="menu-option menu-help" onClick={this.clickHelp}>
+							<div>
 								<div className="menu-icon-container">
 									<svg width="18px" height="18px" viewBox="0 0 18 18">
 										<g>
@@ -190,39 +231,62 @@ class HeaderMenu extends React.Component {
 									</svg>
 								</div>
 								<span>{ t('panel_menu_help') }</span>
-							</Link>
+							</div>
 						</li>
-						<li className="menu-option menu-about">
-							<Link to="/about" onClick={this.props.toggleDropdown}>
+						<li className="menu-option menu-about" onClick={this.clickAbout}>
+							<div>
 								<div className="menu-icon-container">
 									<svg width="17" height="21" viewBox="0 0 17 21">
 										<g className="about-icon" fill="none" fillRule="evenodd">
 											<path d="M8.5 2l7.36 4.25v8.5L8.5 19l-7.36-4.25v-8.5z" />
-											<text transform="translate(0 2)">
-												<tspan x="7" y="12">i</tspan>
-											</text>
+											<path className="text" d="M9.057 14H7.752V8.188h1.305V14zM7.671 6.68c0-.201.064-.368.191-.5.127-.133.309-.199.545-.199.237 0 .42.066.548.199a.687.687 0 0 1 .193.5c0 .196-.064.36-.193.49-.129.131-.311.197-.548.197-.236 0-.418-.066-.545-.196a.677.677 0 0 1-.19-.492z" />
 										</g>
 									</svg>
 								</div>
 								<span>{ t('panel_menu_about') }</span>
-							</Link>
+							</div>
+						</li>
+						<li className={optionClasses} onClick={this.clickSubscriber}>
+							<div>
+								{/* Show premium icon to premium users and plus icon to basic and plus users */}
+								{hasPremiumAccess && (
+									<svg className={iconClasses} width="27" height="25" viewBox="0 0 27 25">
+										<g fill="none" fillRule="evenodd">
+											<g>
+												<path d="M13.263 0L14.573 1.544 16.214 0.313 17.126 2.092 19.018 1.235 19.485 3.161 21.533 2.721 21.533 4.697 23.633 4.697 23.165 6.622 25.213 7.061 24.302 8.841 26.194 9.698 24.885 11.242 26.526 12.474 24.885 13.705 26.194 15.249 24.302 16.106 25.213 17.886 23.165 18.325 23.633 20.251 21.533 20.251 21.533 22.226 19.485 21.787 19.018 23.712 17.126 22.855 16.214 24.635 14.573 23.403 13.263 24.947 11.954 23.403 10.312 24.635 9.401 22.855 7.508 23.712 7.041 21.787 4.994 22.226 4.994 20.251 2.894 20.251 3.361 18.325 1.313 17.886 2.225 16.106 0.333 15.249 1.642 13.705 0 12.474 1.642 11.242 0.333 9.698 2.225 8.841 1.313 7.061 3.361 6.622 2.894 4.697 4.994 4.697 4.994 2.721 7.041 3.161 7.508 1.235 9.401 2.092 10.312 0.313 11.954 1.544z" />
+												<path fillRule="nonzero" stroke="#4A4A4A" strokeWidth=".675" d="M13.009 21.387c-4.947 0-8.959-3.98-8.959-8.892 0-4.914 4.012-8.895 8.959-8.895 4.949 0 8.958 3.981 8.958 8.895 0 4.911-4.01 8.892-8.958 8.892z" />
+											</g>
+											<path fill="#4A4A4A" fillRule="nonzero" d="M13.512 14.397c-1.603-.001-2.902-1.408-2.904-3.144 0-.102-.075-.183-.168-.183-.093 0-.168.082-.168.183-.002 1.736-1.3 3.142-2.904 3.144-.093 0-.168.083-.168.183 0 .1.076.183.168.183 1.603.001 2.902 1.408 2.904 3.144 0 .101.075.183.168.183.093 0 .168-.082.168-.183.002-1.736 1.3-3.142 2.904-3.144.093 0 .168-.083.168-.183 0-.1-.076-.183-.168-.183zm5.996-2.103c-1.069-.001-1.935-.976-1.936-2.178 0-.07-.05-.126-.112-.126s-.112.057-.112.126c-.001 1.202-.867 2.177-1.936 2.178-.062 0-.112.056-.112.126s.05.126.112.126c1.069.001 1.935.976 1.936 2.178 0 .07.05.126.112.126s.112-.057.112-.126c.001-1.202.867-2.177 1.936-2.178.062 0 .112-.056.112-.126s-.05-.126-.112-.126zM15.23 8.03c-.668-.001-1.209-.542-1.21-1.21 0-.039-.031-.07-.07-.07-.039 0-.07.031-.07.07-.001.668-.542 1.209-1.21 1.21-.039 0-.07.031-.07.07 0 .039.031.07.07.07.668.001 1.209.542 1.21 1.21 0 .039.031.07.07.07.039 0 .07-.031.07-.07.001-.668.542-1.209 1.21-1.21.039 0 .07-.031.07-.07 0-.039-.031-.07-.07-.07z" />
+										</g>
+									</svg>
+								)}
+								{!hasPremiumAccess && (
+									<svg className={iconClasses} width="84" height="77" viewBox="0 0 84 77">
+										<g className="about-icon" fill="none">
+											<path d="M79.858 74.75L43.1 57.9c-.579-.315-1.447-.315-2.026 0L4.604 74.75c-.867.472-2.604 0-2.604-.63V2.786C2 2.315 2.579 2 3.447 2h76.99c.868 0 1.447.315 1.447.787V74.12c.58.63-1.157 1.103-2.026.63z" />
+											<path className="text" d="M47.156 37.256c-1.186 1.592-2.981 3.32-4.879 3.184-2.405-.169-2.473-2.676-1.728-4.912.746-2.237 2.474-5.557 4.676-8.64.271-.373.61-.34.88-.034.746 1.118.577 2.642-.643 4.574-1.254 1.999-1.931 3.354-2.643 4.98-.711 1.66-.61 2.88.17 2.948 1.321.102 3.185-2.27 5.014-5.218 2.135-3.456 3.117-5.794 4.202-7.25.339-.475.576-.543.847-.204.508.61.78 2.1-.034 3.795-.746 1.525-2.44 4.066-3.219 5.794-.88 1.931-.745 3.354.474 3.287 1.423-.068 3.151-2.304 4.473-4.676.17-.305.474-.34.61-.034.135.27.17 1.186-.305 2.134-.983 1.898-3.083 3.626-5.083 3.626-2.202 0-3.083-1.39-2.812-3.354z M25.98 22.754c-1.152-.136-1.796-.712-2.135-1.423-.17-.373-.101-.576.339-.61 2.812-.305 5.353-1.728 7.657-1.83 1.728-.067 3.22.475 4.032 2.813.712 2.032.136 3.998-1.016 5.793-1.694 2.643-5.353 5.184-9.792 6.031-.78.136-1.525 0-2.1-.338-.95 1.863-1.966 4.1-3.152 6.912-.135.338-.305.338-.542.101-.474-.508-.813-1.524-.305-3.354.881-3.083 4.066-9.453 7.014-14.095zm-2.033 8.538c7.59-1.423 11.384-6.912 10.47-9.284-.712-1.863-4.1-.101-6.337.543 0 .914-.338 2.1-1.287 3.727-.881 1.558-1.83 3.117-2.846 5.014zm12.773 1.932c-1.355 3.32-1.728 6.132-.203 6.268 1.627.135 3.998-2.304 5.32-4.913.237-.44.61-.475.745 0 .17.542.034 1.287-.339 2.1-.474 1.017-2.947 3.83-5.658 3.761-2.338-.067-3.592-1.694-2.812-5.353 1.253-5.895 5.116-12.028 8.572-15.62.508-.542.983-.61 1.457-.17.982.882 1.186 2.135.78 3.728-1.051 4.167-4.846 8.233-7.862 10.199zm.61-1.457c4.642-3.761 6.54-9.183 6.1-9.454-.441-.27-2.949 3.49-5.286 7.827a18.192 18.192 0 0 0-.814 1.627zm18.06 2.676c1.389-1.897 2.914-4.1 3.896-5.827.17-1.322.508-1.966 1.22-2.61.745-.677 1.525-.813 1.83-.508.338.34.169.712-.272 1.491-.135.203-.237.407-.372.644-.237 3.117.406 5.76.305 8.098-.068 1.321-.305 2.744-1.525 3.557 2.27-.847 3.693-2.88 4.54-4.71.17-.372.508-.27.644 0 .136.306.102 1.187-.474 2.237a7.139 7.139 0 0 1-5.998 3.727c-1.965.068-3.862-.44-5.014-2.541-.813-1.525-.712-3.761.44-4.71.407-.339.678-.203.712.34.034.27.034.541.068.812zm3.828-3.659c-.982 1.796-2.236 3.66-3.523 5.489.508 1.965 1.49 3.354 2.609 3.015 1.558-.474 1.05-5.793.914-8.504z" />
+										</g>
+									</svg>
+								)}
+								<span>{hasPremiumAccess ? 'Ghostery Premium' : 'Ghostery Plus'}</span>
+							</div>
 						</li>
 					</ul>
 					<div className="row account-info">
-						<div onClick={this.clickSignedInAs} className={`${!this.props.logged_in ? 'hide' : ''} menu-option signed-in-as small-12 columns`}>
-							<svg width="17px" height="18px" viewBox="0 0 17 18">
-								<g>
-									<path className="menu-icon" d="M11.7415776,7.69057143 C12.6371552,6.81771429 13.0848707,5.76442857 13.0848707,4.53057143 C13.0848707,3.29685714 12.6371552,2.24357143 11.7415776,1.37057143 C10.8461466,0.497714286 9.76547414,0.0612857143 8.49985345,0.0612857143 C7.23423276,0.0612857143 6.15356034,0.497714286 5.25812931,1.37057143 C4.36255172,2.24357143 3.91483621,3.29685714 3.91483621,4.53057143 C3.91483621,5.76442857 4.36255172,6.81771429 5.25812931,7.69057143 C6.1537069,8.56342857 7.23423276,9 8.49985345,9 C9.76576724,9 10.8462931,8.56342857 11.7415776,7.69057143 Z" />
-									<path className="menu-icon" d="M16.8637069,13.7195714 C16.8357155,13.3277143 16.7800259,12.9048571 16.6964914,12.4508571 C16.6129569,11.9968571 16.5072931,11.576 16.3799397,11.188 C16.2525862,10.8001429 16.0814138,10.4218571 15.8664224,10.0532857 C15.6515776,9.68471429 15.4047845,9.37042857 15.1260431,9.11042857 C14.8473017,8.85042857 14.5071552,8.643 14.1053103,8.48785714 C13.7031724,8.33271429 13.2594138,8.255 12.7738879,8.255 C12.7022241,8.255 12.5350086,8.33842857 12.2723879,8.50528571 C12.0097672,8.67214286 11.7132931,8.85842857 11.3829655,9.064 C11.0526379,9.26942857 10.6226552,9.45585714 10.0934569,9.62242857 C9.56411207,9.78928571 9.03286207,9.87271429 8.49941379,9.87271429 C7.96611207,9.87271429 7.43486207,9.78928571 6.90551724,9.62242857 C6.37631897,9.45585714 5.94633621,9.26942857 5.61600862,9.064 C5.28568103,8.85842857 4.9892069,8.67214286 4.72658621,8.50528571 C4.46381897,8.33842857 4.29675,8.255 4.22508621,8.255 C3.73956034,8.255 3.29580172,8.33271429 2.89381034,8.48785714 C2.49181897,8.643 2.15152586,8.85057143 1.87293103,9.11042857 C1.59433621,9.37042857 1.3475431,9.68471429 1.13269828,10.0532857 C0.917853448,10.4218571 0.746681034,10.8002857 0.619327586,11.188 C0.491974138,11.576 0.386456897,11.9968571 0.302922414,12.4508571 C0.219241379,12.9048571 0.163551724,13.3275714 0.135706897,13.7195714 C0.107862069,14.1115714 0.0939396552,14.513 0.0939396552,14.9242857 C0.0939396552,15.8552857 0.384551724,16.5905714 0.96562931,17.1298571 C1.5467069,17.669 2.31888793,17.9385714 3.28202586,17.9385714 L13.717681,17.9385714 C14.680819,17.9385714 15.4528534,17.669 16.0340776,17.1298571 C16.6153017,16.5905714 16.9057672,15.8554286 16.9057672,14.9242857 C16.9057672,14.513 16.8918448,14.1114286 16.8637069,13.7195714 L16.8637069,13.7195714 Z" />
+						<div onClick={this.clickSignedInAs} className={`${!loggedIn ? 'hide' : ''} menu-option signed-in-as small-12 columns`}>
+							<svg width="20" height="20" viewBox="0 0 20 20">
+								<g fillRule="nonzero">
+									<path className="menu-icon" d="M10 5.519a2.788 2.788 0 0 1 2.772 2.772A2.788 2.788 0 0 1 10 11.063a2.788 2.788 0 0 1-2.772-2.772A2.788 2.788 0 0 1 10 5.52v-.001zm.025 1.036c-.97 0-1.76.79-1.76 1.76s.79 1.76 1.76 1.76 1.76-.79 1.76-1.76-.79-1.76-1.76-1.76z" />
+									<path className="menu-icon" d="M10 1c4.975 0 9 4.025 9 9s-4.025 9-9 9-9-4.025-9-9 4.025-9 9-9zm0 10.279c2.65 0 4.858 1.941 5.262 4.431a7.731 7.731 0 0 0 2.578-5.75c0-4.32-3.534-7.8-7.84-7.8a7.842 7.842 0 0 0-5.549 2.28A7.764 7.764 0 0 0 2.16 9.96a7.833 7.833 0 0 0 2.54 5.75c.441-2.49 2.65-4.431 5.3-4.431zm4.36 5.242c-.114-2.238-2.027-3.995-4.347-3.991-2.335 0-4.24 1.77-4.383 3.991a7.918 7.918 0 0 0 4.383 1.319 7.713 7.713 0 0 0 4.347-1.319z" />
 								</g>
 							</svg>
-							<span title={this.props.email} >{ this.props.email }</span>
+							<span title={email}>{ email }</span>
 						</div>
-						<div onClick={this.clickSignIn} className={`${this.props.logged_in ? 'hide' : ''} menu-option menu-signin small-12 columns`}>
-							<span>{ t('panel_menu_signin') }</span>
+						<div onClick={this.clickSignIn} className={`${loggedIn ? 'hide' : ''} menu-option menu-signin small-12 columns`}>
+							<span>{ t('sign_in') }</span>
 						</div>
-						<div onClick={this.clickSignOut} className={`${!this.props.logged_in ? 'hide' : ''} menu-option menu-signout small-12 columns`}>
-							<span>{ t('panel_menu_signout') }</span>
+						<div onClick={this.clickSignOut} className={`${!loggedIn ? 'hide' : ''} menu-option menu-signout small-12 columns`}>
+							<span>{ t('sign_out') }</span>
 						</div>
 					</div>
 				</div>

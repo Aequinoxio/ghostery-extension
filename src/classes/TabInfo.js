@@ -2,8 +2,11 @@
  * TabInfo Class
  *
  * this._tabInfo[tab_id]: {
- *		hash: 			{string} 	location.hash
- *		host: 			{string} 	everything from the start until the first "/"
+ * 		c2pStatus		{string}	current status of the click_to_play.js script injection on the tab (none|loading|done)
+ * 		c2pQueue		{Object}	queue of c2p messages collected when c2pStatus is 'none' or 'loading', organized as a HashSet by app_id
+ *		domain: 		{string}	the general domain name plus suffix (no sub-domains)
+ *		hash: 			{string} 	hash values appended to the url
+ *		host: 			{string} 	the domain name plus suffix and sub-domains
  *		incognito: 		{boolean} 	enabled/disabled
  *		needsReload: 	{Object}	indicates that changes were made in Ghostery (pause, block, unblock) and the tab should be reloaded
  *		pageTiming		{Object}	window.performance data
@@ -11,7 +14,7 @@
  *		path: 			{string} 	everything after the first "/"
  *		prefetched: 	{boolean}	indicates that the tab was prefetched and not part of the main window
  *		purplebox: 		{boolean}	indicates that the purplebox.js script has been loaded on this tab
- *		protocol: 		{string} 	"http"
+ *		protocol: 		{string} 	request protocol
  *		smartBlock: 	{Object}	smart blocking stats for this tab
  * 		url: 			{string} 	full url
  * }
@@ -19,7 +22,7 @@
  * Ghostery Browser Extension
  * https://www.ghostery.com/
  *
- * Copyright 2018 Ghostery, Inc. All rights reserved.
+ * Copyright 2019 Ghostery, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -36,8 +39,6 @@ import { processUrl } from '../utils/utils';
  */
 class TabInfo {
 	constructor() {
-		this.policySmartBlock = new PolicySmartBlock();
-
 		// @private
 		this._tabInfo = {};
 		this._tabInfoPersist = {};
@@ -45,7 +46,7 @@ class TabInfo {
 
 	/**
 	 * Create a new _tabInfo object
-	 * @param  {number} tab_id			tab id
+	 * @param  {number} tab_id		tab id
 	 * @param  {string} tab_url		tab url
 	 */
 	create(tab_id, tab_url) {
@@ -58,35 +59,30 @@ class TabInfo {
 			timestamp: Date.now(),
 			// assign only when smartBlock is enabled so avoid false positives
 			// when enabling smartBlock is enabled for the first time
-			firstLoadTimestamp: this.policySmartBlock.shouldCheck(tab_id) && (numOfReloads === 0 ? Date.now() : (this.getTabInfoPersist(tab_id, 'firstLoadTimestamp') || 0)) || 0,
-			reloaded: this.policySmartBlock.checkReloadThreshold(tab_id),
+			firstLoadTimestamp: PolicySmartBlock.shouldCheck(tab_id) && (numOfReloads === 0 ? Date.now() : ((this.getTabInfoPersist(tab_id, 'firstLoadTimestamp') || 0)) || 0),
+			reloaded: PolicySmartBlock.checkReloadThreshold(tab_id),
 			numOfReloads,
 			smartBlock: {
 				blocked: {},
 				unblocked: {},
 			},
 			insecureRedirects: [],
+			c2pStatus: 'none',
+			c2pQueue: {},
 		};
 
-		if (tab_url) {
-			const parsed = processUrl(tab_url);
-			info.url = tab_url;
-			info.protocol = parsed.protocol;
-			info.host = parsed.host;
-			info.path = parsed.path;
-			info.hash = parsed.anchor;
-			info.partialScan = false;
-		}
-
 		this._tabInfo[tab_id] = info;
+		this._updateUrl(tab_id, tab_url);
 	}
 
 	/**
 	 * Getter method
-	 * @param  	{number} 		tab_id		tab id
+	 * @param  	{number} 	tab_id		tab id
 	 * @param 	{string}	property 	property name
 	 * @return 	{Object}				_tabInfo data
 	 */
+	// TODO consider improving handling of what happens if we mistype the property name. Always
+	// returning an object where property would otherwise have returned false could result in subtle bugs.
 	getTabInfo(tab_id, property) {
 		if (this._tabInfo.hasOwnProperty(tab_id)) {
 			if (property) {
@@ -99,8 +95,8 @@ class TabInfo {
 
 	/**
 	 * Getter method for tab parameters which we want to persist during the session.
-	 * @param  {number} 	tab_id		tab id
-	 * @param {string}	property 	persitant property name
+	 * @param  {number}	tab_id		tab id
+	 * @param  {string}	property 	persistent property name
 	 * @return {Object}				persistent data for this tab
 	 */
 	getTabInfoPersist(tab_id, property) {
@@ -172,16 +168,18 @@ class TabInfo {
 	 *
 	 * @private
 	 *
-	 * @param  {number} 	tab_id		tab id
+	 * @param  {number} tab_id		tab id
 	 * @param  {string} tab_url		tab url
 	 */
 	_updateUrl(tab_id, tab_url) {
 		const parsed = processUrl(tab_url);
 		this._tabInfo[tab_id].url = tab_url;
-		this._tabInfo[tab_id].protocol = parsed.protocol;
-		this._tabInfo[tab_id].host = parsed.host;
-		this._tabInfo[tab_id].path = parsed.path;
-		this._tabInfo[tab_id].hash = parsed.anchor;
+		this._tabInfo[tab_id].protocol = parsed.scheme;
+		this._tabInfo[tab_id].host = parsed.hostname;
+		this._tabInfo[tab_id].domain = parsed.generalDomain;
+		this._tabInfo[tab_id].path = parsed.pathname;
+		this._tabInfo[tab_id].hash = parsed.hash;
+		this._tabInfo[tab_id].partialScan = false;
 	}
 }
 
